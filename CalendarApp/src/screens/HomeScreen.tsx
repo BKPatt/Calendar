@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Container,
     Typography,
     Box,
     Paper,
-    Grid,
+    Grid2,
     Button,
     List,
     ListItem,
@@ -12,6 +12,8 @@ import {
     ListItemIcon,
     CircularProgress,
     ListItemButton,
+    Dialog,
+    DialogContent,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import {
@@ -26,19 +28,33 @@ import { useApi } from '../hooks/useApi';
 import { getUpcomingEvents } from '../services/api';
 import { Events } from '../types/event';
 import { formatDate } from '../utils/dateHelpers';
+import EventCreateScreen from '../dialogs/EventCreateScreen';
+import { startOfMonth } from 'date-fns';
+import CalendarGlance from '../components/Calendar/CalendarGlance';
 
 const HomeScreen: React.FC = () => {
     const theme = useTheme();
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { data: upcomingEvents, isLoading, error } = useApi<Events[]>(getUpcomingEvents);
+    const { data: upcomingEvents, isLoading, error, refetch } = useApi<Events[]>(getUpcomingEvents);
+    const [isEventCreateOpen, setIsEventCreateOpen] = useState(false);
+    const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
 
     const handleCreateEvent = () => {
-        navigate('/events/create');
+        setIsEventCreateOpen(true);
+    };
+
+    const handleCloseEventCreate = () => {
+        setIsEventCreateOpen(false);
+        refetch(); // Refresh the events list after creating a new event
+    };
+
+    const handleEventCreated = () => {
+        refetch(); // Refresh events after creation
     };
 
     const handleViewAllEvents = () => {
-        navigate('/calendar');
+        navigate('/events');
     };
 
     const handleViewGroups = () => {
@@ -55,8 +71,13 @@ const HomeScreen: React.FC = () => {
                     Welcome, {user?.firstName || 'User'}!
                 </Typography>
 
-                <Grid container spacing={3}>
-                    <Grid item xs={12} md={8}>
+                <Grid2 container spacing={3}>
+                    <Grid2
+                        sx={{
+                            size: 12,
+                            '@media (min-width:600px)': { size: 8 }
+                        }}
+                    >
                         <Paper elevation={3} sx={{ p: 2 }}>
                             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                                 <Typography variant="h6">Upcoming Events</Typography>
@@ -90,9 +111,14 @@ const HomeScreen: React.FC = () => {
                                 )}
                             </List>
                         </Paper>
-                    </Grid>
+                    </Grid2>
 
-                    <Grid item xs={12} md={4}>
+                    <Grid2
+                        sx={{
+                            size: 12,
+                            '@media (min-width:600px)': { size: 4 }
+                        }}
+                    >
                         <Paper elevation={3} sx={{ p: 2 }}>
                             <Typography variant="h6" gutterBottom>
                                 Quick Actions
@@ -117,20 +143,30 @@ const HomeScreen: React.FC = () => {
                                 </Button>
                             </Box>
                         </Paper>
-                    </Grid>
-                </Grid>
+                    </Grid2>
+                </Grid2>
 
                 <Box mt={4}>
-                    <Typography variant="h6" gutterBottom>
-                        Your Calendar at a Glance
-                    </Typography>
-                    <Paper elevation={3} sx={{ p: 2, bgcolor: theme.palette.grey[100] }}>
-                        <Typography variant="body2" color="textSecondary">
-                            Calendar overview to be implemented
-                        </Typography>
+                    <Paper elevation={3} sx={{ p: 2 }}>
+                        <CalendarGlance events={upcomingEvents || []} />
                     </Paper>
                 </Box>
             </Box>
+
+            <Dialog
+                open={isEventCreateOpen}
+                onClose={handleCloseEventCreate}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogContent>
+                    <EventCreateScreen
+                        open={isEventCreateOpen}
+                        onClose={handleCloseEventCreate}
+                        onEventCreated={handleEventCreated}
+                    />
+                </DialogContent>
+            </Dialog>
         </Container>
     );
 };

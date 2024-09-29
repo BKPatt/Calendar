@@ -65,4 +65,9 @@ urlpatterns = [
     # Auth
     path('auth/register/', views.RegisterView.as_view(), name='register'),
     path('auth/login/', views.LoginView.as_view(), name='login'),
+    path('auth/logout/', views.LogoutView.as_view(), name='logout'),
+    
+    # Protected paths that require authentication
+    path('events/create/', views.EventCreateView.as_view(), name='event-create'),
+    path('groups/', views.GroupListView.as_view(), name='group-list'),
 ]

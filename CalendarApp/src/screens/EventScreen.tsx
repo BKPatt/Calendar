@@ -4,7 +4,7 @@ import {
     Typography,
     Box,
     Paper,
-    Grid,
+    Grid2,
     Button,
     Chip,
     Avatar,
@@ -50,7 +50,6 @@ const EventScreen: React.FC = () => {
     const [isSharing, setIsSharing] = useState(false);
     const [shareEmail, setShareEmail] = useState('');
 
-    // Access event via 'data' inside the response object
     const { data: eventResponse, isLoading, error, refetch } = useApi<ApiResponse<Events>>(() => getEvent(Number(eventId)));
 
     const event = eventResponse?.data;
@@ -133,8 +132,13 @@ const EventScreen: React.FC = () => {
                         </IconButton>
                     </Box>
                 </Box>
-                <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
+                <Grid2 container spacing={2}>
+                    <Grid2
+                        sx={{
+                            size: 12,
+                            '@media (min-width:600px)': { size: 6 }
+                        }}
+                    >
                         <Box display="flex" alignItems="center" mb={1}>
                             <ScheduleIcon sx={{ mr: 1 }} color="action" />
                             <Typography>
@@ -157,12 +161,17 @@ const EventScreen: React.FC = () => {
                                 <Typography>{event.group.name}</Typography>
                             </Box>
                         )}
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
+                    </Grid2>
+                    <Grid2
+                        sx={{
+                            size: 12,
+                            '@media (min-width:600px)': { size: 6 }
+                        }}
+                    >
                         <Typography variant="h6" gutterBottom>Description</Typography>
                         <Typography>{event.description}</Typography>
-                    </Grid>
-                </Grid>
+                    </Grid2>
+                </Grid2>
                 <Box mt={3}>
                     <Typography variant="h6" gutterBottom>Shared with</Typography>
                     <List>

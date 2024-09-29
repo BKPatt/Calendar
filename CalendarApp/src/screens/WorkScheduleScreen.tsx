@@ -20,7 +20,6 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
 import { getWorkSchedules, createWorkSchedule, updateWorkSchedule } from '../services/api';
-import { WorkSchedule } from '../types/event';
 
 const WorkScheduleScreen: React.FC = () => {
     const { user } = useAuth();

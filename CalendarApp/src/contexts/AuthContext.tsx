@@ -1,4 +1,3 @@
-// AuthProvider.tsx
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import * as authService from '../services/auth';
 import { User, RegistrationData } from '../types/user';
@@ -51,9 +50,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsLoading(true);
         try {
             const { user, token } = await authService.login(username, password);
+            localStorage.setItem('authToken', token);
             setUser(user);
             setIsAuthenticated(true);
-            localStorage.setItem('authToken', token);
         } catch (error) {
             console.error('Login error:', error);
             throw error;
@@ -66,6 +65,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsLoading(true);
         try {
             await authService.logout();
+            localStorage.removeItem('authToken');
             setUser(null);
             setIsAuthenticated(false);
         } catch (error) {
@@ -79,9 +79,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsLoading(true);
         try {
             const { user, token } = await authService.register(userData);
+            localStorage.setItem('authToken', token);
             setUser(user);
             setIsAuthenticated(true);
-            localStorage.setItem('authToken', token); // Save token to localStorage
         } catch (error) {
             throw error;
         } finally {

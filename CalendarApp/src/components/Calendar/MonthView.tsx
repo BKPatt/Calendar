@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Grid,
+    Grid2,
     Typography,
     IconButton,
     Box,
     useMediaQuery
 } from '@mui/material';
 import { ChevronLeft, ChevronRight } from '@mui/icons-material';
-import { styled, useTheme } from '@mui/material/styles';  // Use @mui/material/styles
+import { styled, useTheme } from '@mui/material/styles';
 import {
     startOfMonth,
     endOfMonth,
@@ -35,11 +35,11 @@ const MonthHeader = styled(Box)(({ theme }) => ({
     marginBottom: theme.spacing(2),
 }));
 
-const WeekDaysHeader = styled(Grid)(({ theme }) => ({
+const WeekDaysHeader = styled(Grid2)(({ theme }) => ({
     marginBottom: theme.spacing(1),
 }));
 
-const DaysGrid = styled(Grid)(({ theme }) => ({
+const DaysGrid = styled(Grid2)(({ theme }) => ({
     height: '70vh',
     overflow: 'auto',
 }));
@@ -105,17 +105,17 @@ const MonthView: React.FC = () => {
 
             <WeekDaysHeader container>
                 {weekDays.map(day => (
-                    <Grid item xs key={day}>
+                    <Grid2 key={day} size={1} container justifyContent="center">
                         <Typography align="center" variant="subtitle2">
                             {day}
                         </Typography>
-                    </Grid>
+                    </Grid2>
                 ))}
             </WeekDaysHeader>
 
             <DaysGrid container spacing={1}>
-                {days.map((day, index) => (
-                    <Grid item xs={isMobile ? 3 : 1.7} key={day.toISOString()}>
+                {days.map((day) => (
+                    <Grid2 key={day.toISOString()} size={isMobile ? 3 : 1.7}>
                         <Day
                             date={day}
                             events={getEventsForDay(day)}
@@ -124,7 +124,7 @@ const MonthView: React.FC = () => {
                             onSelect={onDateClick}
                             isCurrentMonth={isSameMonth(day, currentMonth)}
                         />
-                    </Grid>
+                    </Grid2>
                 ))}
             </DaysGrid>
 

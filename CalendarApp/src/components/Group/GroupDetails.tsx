@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
     Container,
     Typography,
@@ -7,7 +7,6 @@ import {
     ListItemText,
     ListItemAvatar,
     Avatar,
-    Button,
     Tabs,
     Tab,
     Box,
@@ -16,7 +15,7 @@ import {
 import { Person as PersonIcon, Event as EventIcon } from '@mui/icons-material';
 import { useParams } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
-import { getGroup, getGroupEvents, getGroups, getGroupSchedule } from '../../services/api';
+import { getGroup, getGroupEvents, getGroupSchedule } from '../../services/api';
 import { Group } from '../../types/group';
 import { WorkSchedule, Events } from '../../types/event';
 import GroupScheduleView from '../../components/Group/GroupScheduleView';

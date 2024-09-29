@@ -12,12 +12,12 @@ import CalendarScreen from './screens/CalendarScreen';
 import GroupScreen from './screens/GroupScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import EventScreen from './screens/EventScreen';
+import UpcomingEventsScreen from './screens/UpcomingEventsScreen';
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    // You can add a loading spinner here
     return <div>Loading...</div>;
   }
 
@@ -38,6 +38,7 @@ const App: React.FC = () => {
             <Route path="/groups" element={<PrivateRoute><GroupScreen /></PrivateRoute>} />
             <Route path="/profile" element={<PrivateRoute><ProfileScreen /></PrivateRoute>} />
             <Route path="/events/:eventId" element={<PrivateRoute><EventScreen /></PrivateRoute>} />
+            <Route path="/events" element={<PrivateRoute><UpcomingEventsScreen /></PrivateRoute>} />
           </Routes>
         </Router>
       </AuthProvider>

@@ -76,8 +76,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 class GroupViewSet(viewsets.ModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
+    permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'description']
 
@@ -87,7 +86,7 @@ class GroupViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['update', 'destroy']:
             return [CanEditGroup()]
-        return [permissions.IsAuthenticated()]
+        return [IsAuthenticated()]
 
     @action(detail=True, methods=['post'])
     def join(self, request, pk=None):
@@ -122,7 +121,7 @@ class GroupViewSet(viewsets.ModelViewSet):
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
-    permission_classes = [IsAuthenticated, IsEventOwnerOrShared, CanShareEvent]
+    permission_classes = [IsAuthenticated, IsEventOwnerOrShared]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['title', 'description']
     ordering_fields = ['start_time', 'end_time', 'created_at']
@@ -132,7 +131,7 @@ class EventViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
         elif self.action in ['update', 'destroy']:
             return [IsEventOwnerOrShared()]
-        return super().get_permissions()
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         if self.action == 'upcoming':
@@ -280,7 +279,7 @@ class WorkScheduleViewSet(viewsets.ModelViewSet):
 class WorkScheduleView(viewsets.ModelViewSet):
     queryset = WorkSchedule.objects.all()
     serializer_class = WorkScheduleSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return WorkSchedule.objects.filter(user=self.request.user)
@@ -297,7 +296,7 @@ class WorkScheduleView(viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class CalendarView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         serializer = CalendarViewSerializer(data=request.data)
@@ -323,7 +322,7 @@ class CalendarView(APIView):
         return Response(serializer.data)
 
 class FreeBusyView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         start_date = request.data.get('start_date')
@@ -968,7 +967,7 @@ class OutlookCalendarSyncView(APIView):
         return Response({'synced_events': events}, status=200)
     
 class RegisterView(APIView):
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = UserSerializer(data=request.data)
@@ -977,16 +976,14 @@ class RegisterView(APIView):
             UserProfile.objects.create(user=user)
             token, _ = Token.objects.get_or_create(user=user)
             response_data = {
-                'data': {
-                    'user': UserSerializer(user).data,
-                    'token': token.key
-                }
+                'user': UserSerializer(user).data,
+                'token': token.key
             }
             return Response(response_data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 class LoginView(APIView):
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     def post(self, request):
         username = request.data.get('username')
@@ -1002,3 +999,42 @@ class LoginView(APIView):
             }
             return Response(response_data)
         return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            token = Token.objects.get(user=request.user)
+            token.delete()
+            return Response({"status": "Successfully logged out"}, status=status.HTTP_200_OK)
+        except Token.DoesNotExist:
+            return Response({"error": "Invalid token or already logged out"}, status=status.HTTP_400_BAD_REQUEST)
+        
+class EventCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        data = request.data.copy()
+        data['created_by'] = request.user.id  # Automatically associate event with the user
+
+        serializer = EventSerializer(data=data)
+        if serializer.is_valid():
+            event = serializer.save()
+            return Response(EventSerializer(event).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class GroupListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_groups = Group.objects.filter(members=request.user)
+        public_groups = Group.objects.filter(is_public=True).exclude(members=request.user)
+
+        user_groups_serializer = GroupSerializer(user_groups, many=True)
+        public_groups_serializer = GroupSerializer(public_groups, many=True)
+
+        return Response({
+            'user_groups': user_groups_serializer.data,
+            'public_groups': public_groups_serializer.data
+        }, status=status.HTTP_200_OK)

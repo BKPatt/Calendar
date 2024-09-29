@@ -1,6 +1,6 @@
 import React from 'react';
 import { Typography, Box, Chip } from '@mui/material';
-import { styled } from '@mui/material/styles';  // Use @mui/material/styles instead of @mui/system
+import { styled } from '@mui/material/styles';
 import { AccessTime, Room } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { Events } from '../../types/event';

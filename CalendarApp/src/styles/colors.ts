@@ -1,6 +1,5 @@
 import { PaletteOptions } from '@mui/material/styles';
 
-// Define your color palette
 const palette = {
     primary: {
         main: '#1976d2',

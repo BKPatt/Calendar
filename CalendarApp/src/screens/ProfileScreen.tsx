@@ -6,7 +6,7 @@ import {
     Button,
     Avatar,
     Box,
-    Grid,
+    Grid2,
     Paper,
     CircularProgress,
     Snackbar,
@@ -57,7 +57,7 @@ const ProfileScreen: React.FC = () => {
     };
 
     // Separate handler for Select
-    const handleSelectChange = (e: SelectChangeEvent<string>) => {  // Use SelectChangeEvent
+    const handleSelectChange = (e: SelectChangeEvent<string>) => {
         const { name, value } = e.target;
         setEditedProfile((prev) => ({ ...prev, [name as string]: value }));
     };
@@ -103,8 +103,13 @@ const ProfileScreen: React.FC = () => {
                         </Box>
                     )}
                 </Box>
-                <Grid container spacing={3}>
-                    <Grid item xs={12} md={4}>
+                <Grid2 container spacing={3}>
+                    <Grid2
+                        sx={{
+                            size: 12,
+                            '@media (min-width:600px)': { size: 4 },
+                        }}
+                    >
                         <Box display="flex" flexDirection="column" alignItems="center">
                             <Avatar
                                 src={profile.profilePicture}
@@ -118,10 +123,15 @@ const ProfileScreen: React.FC = () => {
                                 </Button>
                             )}
                         </Box>
-                    </Grid>
-                    <Grid item xs={12} md={8}>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6}>
+                    </Grid2>
+                    <Grid2
+                        sx={{
+                            size: 12,
+                            '@media (min-width:600px)': { size: 8 },
+                        }}
+                    >
+                        <Grid2 container spacing={2}>
+                            <Grid2 sx={{ size: 12, '@media (min-width:600px)': { size: 6 } }}>
                                 <TextField
                                     fullWidth
                                     label="First Name"
@@ -130,8 +140,8 @@ const ProfileScreen: React.FC = () => {
                                     onChange={handleTextFieldChange}
                                     disabled={!isEditing}
                                 />
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
+                            </Grid2>
+                            <Grid2 sx={{ size: 12, '@media (min-width:600px)': { size: 6 } }}>
                                 <TextField
                                     fullWidth
                                     label="Last Name"
@@ -140,8 +150,8 @@ const ProfileScreen: React.FC = () => {
                                     onChange={handleTextFieldChange}
                                     disabled={!isEditing}
                                 />
-                            </Grid>
-                            <Grid item xs={12}>
+                            </Grid2>
+                            <Grid2 sx={{ size: 12 }}>
                                 <TextField
                                     fullWidth
                                     label="Email"
@@ -150,8 +160,8 @@ const ProfileScreen: React.FC = () => {
                                     onChange={handleTextFieldChange}
                                     disabled={!isEditing}
                                 />
-                            </Grid>
-                            <Grid item xs={12}>
+                            </Grid2>
+                            <Grid2 sx={{ size: 12 }}>
                                 <TextField
                                     fullWidth
                                     label="Phone Number"
@@ -160,15 +170,15 @@ const ProfileScreen: React.FC = () => {
                                     onChange={handleTextFieldChange}
                                     disabled={!isEditing}
                                 />
-                            </Grid>
-                            <Grid item xs={12}>
+                            </Grid2>
+                            <Grid2 sx={{ size: 12 }}>
                                 <FormControl fullWidth disabled={!isEditing}>
                                     <InputLabel id="default-timezone-label">Default Timezone</InputLabel>
                                     <Select
                                         labelId="default-timezone-label"
                                         name="defaultTimezone"
                                         value={isEditing ? editedProfile.defaultTimezone : profile.defaultTimezone}
-                                        onChange={handleSelectChange}  // Use the updated handler
+                                        onChange={handleSelectChange}
                                         label="Default Timezone"
                                     >
                                         <MenuItem value="UTC">UTC</MenuItem>
@@ -178,8 +188,8 @@ const ProfileScreen: React.FC = () => {
                                         <MenuItem value="America/Los_Angeles">Pacific Time</MenuItem>
                                     </Select>
                                 </FormControl>
-                            </Grid>
-                            <Grid item xs={12}>
+                            </Grid2>
+                            <Grid2 sx={{ size: 12 }}>
                                 <TextField
                                     fullWidth
                                     label="Bio"
@@ -190,10 +200,10 @@ const ProfileScreen: React.FC = () => {
                                     multiline
                                     rows={4}
                                 />
-                            </Grid>
-                        </Grid>
-                    </Grid>
-                </Grid>
+                            </Grid2>
+                        </Grid2>
+                    </Grid2>
+                </Grid2>
             </Paper>
             <Snackbar
                 open={snackbarOpen}

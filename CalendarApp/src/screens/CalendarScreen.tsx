@@ -3,7 +3,7 @@ import {
     Container,
     Typography,
     Box,
-    Grid,
+    Grid2,
     Paper,
     IconButton,
     Button,
@@ -91,7 +91,7 @@ const CalendarScreen: React.FC = () => {
                 let day = formattedDays[dayCounter];
                 if (day) {
                     row.push(
-                        <Grid item key={day.date.toString()} xs={1} sm={1} md={1} lg={1}>
+                        <Grid2 key={day.date.toString()} size={1}>
                             <Paper
                                 elevation={isSameDay(day.date, selectedDate) ? 8 : 1}
                                 sx={{
@@ -143,17 +143,17 @@ const CalendarScreen: React.FC = () => {
                                     )}
                                 </Box>
                             </Paper>
-                        </Grid>
+                        </Grid2>
                     );
                     dayCounter++;
                 } else {
-                    row.push(<Grid item key={`empty-${i}-${j}`} xs={1} sm={1} md={1} lg={1} />);
+                    row.push(<Grid2 key={`empty-${i}-${j}`} size={1} />);
                 }
             }
             rows.push(
-                <Grid container item spacing={1} key={i}>
+                <Grid2 container spacing={1} key={i}>
                     {row}
-                </Grid>
+                </Grid2>
             );
         }
 
@@ -187,19 +187,19 @@ const CalendarScreen: React.FC = () => {
                         </Button>
                     </Box>
                 </Box>
-                <Grid container spacing={1}>
+                <Grid2 container spacing={1}>
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                        <Grid item xs={1} sm={1} md={1} lg={1} key={day}>
+                        <Grid2 key={day} size={1}>
                             <Typography align="center" fontWeight="bold">
                                 {day}
                             </Typography>
-                        </Grid>
+                        </Grid2>
                     ))}
-                </Grid>
+                </Grid2>
                 <Box mt={1}>
-                    <Grid container spacing={1}>
+                    <Grid2 container spacing={1}>
                         {renderCalendar()}
-                    </Grid>
+                    </Grid2>
                 </Box>
             </Box>
             <Dialog open={isEventFormOpen} onClose={handleEventFormClose} maxWidth="md" fullWidth>
