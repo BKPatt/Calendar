@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import viewsets, permissions, status, filters
-from rest_framework.decorators import action
+from rest_framework.decorators import action, authentication_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate
@@ -25,6 +25,7 @@ from .group_management import GroupInvitationManager
 from .notification_service import NotificationManager
 from .user_preferences import UserPreferencesManager
 from .permissions import CanEditGroup, CanShareEvent, IsEventOwnerOrShared
+from rest_framework.decorators import api_view, permission_classes
 
 from .models import (
     EventCategory, UserProfile, Group, Event, Availability, WorkSchedule,
@@ -40,6 +41,7 @@ from .serializers import (
 from .tasks import send_event_reminder
 from .utils import generate_ical, find_common_free_time
 from rest_framework.authtoken.models import Token
+from rest_framework.authentication import TokenAuthentication
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
@@ -1038,3 +1040,9 @@ class GroupListView(APIView):
             'user_groups': user_groups_serializer.data,
             'public_groups': public_groups_serializer.data
         }, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def verify_token(request):
+    return Response({'valid': True}, status=status.HTTP_200_OK)
