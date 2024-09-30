@@ -63,7 +63,7 @@ export interface Invitation {
     sender: User;
     recipient: User;
     group?: Group;
-    event?: Event;
+    event?: Events;
     invitationType: InvitationType;
     message?: string;
     status: InvitationStatus;

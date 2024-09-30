@@ -1,5 +1,4 @@
 from datetime import timedelta
-from django.contrib.auth.models import User
 from django.forms import ValidationError
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
@@ -28,7 +27,7 @@ from .permissions import CanEditGroup, CanShareEvent, IsEventOwnerOrShared
 from rest_framework.decorators import api_view, permission_classes
 
 from .models import (
-    EventCategory, UserProfile, Group, Event, Availability, WorkSchedule,
+    CustomUser, EventCategory, UserProfile, Group, Event, Availability, WorkSchedule,
     Invitation, Notification, Tag, Attachment, UserDeviceToken, RecurringSchedule, EventReminder
 )
 from .serializers import (
@@ -108,7 +107,7 @@ class GroupViewSet(viewsets.ModelViewSet):
     def invite(self, request, pk=None):
         group = self.get_object()
         user_id = request.data.get('user_id')
-        user = get_object_or_404(User, pk=user_id)
+        user = get_object_or_404(CustomUser, pk=user_id)
         GroupInvitationManager.send_invitation(group, user)
         return Response({'status': 'Invitation sent'})
 
@@ -170,7 +169,7 @@ class EventViewSet(viewsets.ModelViewSet):
     def share(self, request, pk=None):
         event = self.get_object()
         user_ids = request.data.get('user_ids', [])
-        users = User.objects.filter(id__in=user_ids)
+        users = CustomUser.objects.filter(id__in=user_ids)
         event.shared_with.add(*users)
         return Response({'status': 'Event shared'})
 
@@ -352,7 +351,7 @@ class FreeBusyView(APIView):
 class PasswordResetView(APIView):
     def post(self, request):
         email = request.data.get('email')
-        user = User.objects.get(email=email)
+        user = CustomUser.objects.get(email=email)
         reset_token = uuid.uuid4()
         user.profile.reset_token = reset_token
         user.profile.save()
@@ -500,7 +499,7 @@ class GroupMembershipView(APIView):
             return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
         if group.admin != request.user:
             return Response({"error": "Not authorized to modify group membership"}, status=status.HTTP_403_FORBIDDEN)
-        user = User.objects.get(id=user_id)
+        user = CustomUser.objects.get(id=user_id)
         if action == 'add':
             group.members.add(user)
         elif action == 'remove':
@@ -558,7 +557,7 @@ class SearchView(APIView):
             Q(name__icontains=query) | Q(description__icontains=query),
             members=request.user
         )
-        users = User.objects.filter(
+        users = CustomUser.objects.filter(
             Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query)
         )
         
@@ -859,7 +858,7 @@ class EventShareView(APIView):
     def post(self, request, event_id):
         event = get_object_or_404(Event, id=event_id)
         user_ids = request.data.get('user_ids', [])
-        users = User.objects.filter(id__in=user_ids)
+        users = CustomUser.objects.filter(id__in=user_ids)
         event.shared_with.add(*users)
         return Response({'status': 'Event shared successfully'}, status=200)
 
@@ -872,7 +871,7 @@ class GroupInvitationView(APIView):
 
     def post(self, request, group_id, user_id):
         group = get_object_or_404(Group, id=group_id)
-        user = get_object_or_404(User, id=user_id)
+        user = get_object_or_404(CustomUser, id=user_id)
         GroupInvitationManager.send_invitation(group, user)
         return Response({'status': 'Invitation sent successfully'}, status=200)
 
@@ -1046,3 +1045,20 @@ class GroupListView(APIView):
 @permission_classes([IsAuthenticated])
 def verify_token(request):
     return Response({'valid': True}, status=status.HTTP_200_OK)
+    
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def current_user(request):
+    serializer = UserSerializer(request.user)
+    return Response(serializer.data)
+    
+@api_view(['GET'])
+def get_user_profile(request, user_id):
+    user = get_object_or_404(CustomUser, id=user_id)
+    serializer = UserProfileSerializer(user.profile)
+    print(serializer.data)
+    return Response({
+        'data': serializer.data,
+        'message': 'User profile fetched successfully'
+    })

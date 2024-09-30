@@ -66,6 +66,22 @@ const EventScreen: React.FC = () => {
         setIsSharing(true);
     }, []);
 
+    const getInitials = (user: User) => {
+        return `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}` || user.username[0];
+    };
+
+    const getFullName = (user: User) => {
+        if (user.firstName && user.lastName) {
+            return `${user.firstName} ${user.lastName}`;
+        } else if (user.firstName) {
+            return user.firstName;
+        } else if (user.lastName) {
+            return user.lastName;
+        } else {
+            return user.username;
+        }
+    };
+
     const handleConfirmDelete = useCallback(async () => {
         if (event) {
             try {
@@ -179,8 +195,7 @@ const EventScreen: React.FC = () => {
                             <ListItem key={user.id}>
                                 <ListItemAvatar>
                                     <Avatar>
-                                        {user.firstName.charAt(0)}
-                                        {user.lastName.charAt(0)}
+                                        {getInitials(user)}
                                     </Avatar>
                                 </ListItemAvatar>
                                 <ListItemText

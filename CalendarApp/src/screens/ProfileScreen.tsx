@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
     Container,
     Typography,
@@ -31,10 +31,10 @@ const ProfileScreen: React.FC = () => {
     const [snackbarMessage, setSnackbarMessage] = useState('');
 
     const { data, isLoading, error, refetch } = useApi<UserProfile>(() =>
-        getUserProfile(user?.id || 0)
+        user ? getUserProfile(user.id) : Promise.reject('No user')
     );
 
-    useEffect(() => {
+    React.useEffect(() => {
         if (data) {
             setProfile(data);
         }
@@ -50,16 +50,14 @@ const ProfileScreen: React.FC = () => {
         setEditedProfile({});
     };
 
-    // Separate handler for TextField
     const handleTextFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setEditedProfile((prev) => ({ ...prev, [name as string]: value }));
+        setEditedProfile((prev) => ({ ...prev, [name]: value }));
     };
 
-    // Separate handler for Select
     const handleSelectChange = (e: SelectChangeEvent<string>) => {
         const { name, value } = e.target;
-        setEditedProfile((prev) => ({ ...prev, [name as string]: value }));
+        setEditedProfile((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleSave = async () => {
@@ -77,6 +75,7 @@ const ProfileScreen: React.FC = () => {
         }
     };
 
+    if (!user) return <Typography>Please log in to view your profile.</Typography>;
     if (isLoading) return <CircularProgress />;
     if (error) return <Typography color="error">Error: {error}</Typography>;
     if (!profile) return <Typography>No profile data available</Typography>;
@@ -104,12 +103,7 @@ const ProfileScreen: React.FC = () => {
                     )}
                 </Box>
                 <Grid2 container spacing={3}>
-                    <Grid2
-                        sx={{
-                            size: 12,
-                            '@media (min-width:600px)': { size: 4 },
-                        }}
-                    >
+                    <Grid2 sx={{ size: 12, '@media (min-width:600px)': { size: 4 } }}>
                         <Box display="flex" flexDirection="column" alignItems="center">
                             <Avatar
                                 src={profile.profilePicture}
@@ -124,12 +118,7 @@ const ProfileScreen: React.FC = () => {
                             )}
                         </Box>
                     </Grid2>
-                    <Grid2
-                        sx={{
-                            size: 12,
-                            '@media (min-width:600px)': { size: 8 },
-                        }}
-                    >
+                    <Grid2 sx={{ size: 12, '@media (min-width:600px)': { size: 8 } }}>
                         <Grid2 container spacing={2}>
                             <Grid2 sx={{ size: 12, '@media (min-width:600px)': { size: 6 } }}>
                                 <TextField

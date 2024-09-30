@@ -67,8 +67,11 @@ urlpatterns = [
     path('auth/login/', views.LoginView.as_view(), name='login'),
     path('auth/logout/', views.LogoutView.as_view(), name='logout'),
     path('auth/verify-token/', views.verify_token, name='verify_token'),
+    path('auth/user/', views.current_user, name='current_user'),
     
     # Protected paths that require authentication
     path('events/create/', views.EventCreateView.as_view(), name='event-create'),
     path('groups/', views.GroupListView.as_view(), name='group-list'),
+    
+    path('users/<int:user_id>/', views.get_user_profile, name='user_profile'),
 ]

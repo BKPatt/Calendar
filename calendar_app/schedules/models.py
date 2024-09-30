@@ -5,7 +5,6 @@ from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
 
-
 class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
 

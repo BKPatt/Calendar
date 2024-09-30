@@ -5,15 +5,17 @@ import { apiRequest, getPaginatedResults, handleApiError } from '../utils/apiHel
 
 // User-related API calls
 export async function getUserProfile(userId: number): Promise<ApiResponse<UserProfile>> {
-    const response = await fetch(`/api/users/${userId}`); // Replace with your actual API endpoint
-    const user: UserProfile = await response.json(); // Assuming the response returns a UserProfile object
-
-    // Return an ApiResponse structure
-    return {
-        data: user,
-        message: 'User profile fetched successfully',
-    };
+    try {
+        const response = await apiRequest<UserProfile>(`/users/${userId}/`, 'GET');
+        return {
+            data: response.data,  // Access data from the ApiResponse
+            message: 'User profile fetched successfully',
+        };
+    } catch (error) {
+        throw new Error(handleApiError(error));
+    }
 }
+
 
 /**
  * Update the user profile

@@ -15,6 +15,8 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
+    useTheme,
+    useMediaQuery,
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -54,6 +56,8 @@ interface EventCreateScreenProps {
 
 const EventCreateScreen: React.FC<EventCreateScreenProps> = ({ open, onClose, onEventCreated }) => {
     const { user } = useAuth();
+    const theme = useTheme();
+    const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [startTime, setStartTime] = useState<Date | null>(new Date());
@@ -90,7 +94,6 @@ const EventCreateScreen: React.FC<EventCreateScreenProps> = ({ open, onClose, on
             onClose();
         } catch (error) {
             console.error('Failed to create event:', error);
-            // Handle error (e.g., show an error message)
         }
     };
 
@@ -99,7 +102,19 @@ const EventCreateScreen: React.FC<EventCreateScreenProps> = ({ open, onClose, on
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="sm"
+            fullWidth
+            fullScreen={fullScreen}
+            PaperProps={{
+                style: {
+                    marginTop: theme.spacing(8), // Use theme.spacing for consistent spacing (default is 8px per unit)
+                    height: `calc(100% - ${theme.spacing(20)})`, // Adjust height based on spacing
+                },
+            }}
+        >
             <DialogTitle>Create New Event</DialogTitle>
             <DialogContent>
                 <LocalizationProvider dateAdapter={AdapterDateFns}>

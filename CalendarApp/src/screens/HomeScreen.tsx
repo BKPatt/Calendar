@@ -6,12 +6,7 @@ import {
     Paper,
     Grid2,
     Button,
-    List,
-    ListItem,
-    ListItemText,
-    ListItemIcon,
     CircularProgress,
-    ListItemButton,
     Dialog,
     DialogContent,
 } from '@mui/material';
@@ -20,23 +15,28 @@ import {
     Event as EventIcon,
     Group as GroupIcon,
     Add as AddIcon,
-    CalendarToday as CalendarIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
-import { getUpcomingEvents } from '../services/api';
+import { getUpcomingEvents, getGroups } from '../services/api';
 import { Events } from '../types/event';
-import { formatDate } from '../utils/dateHelpers';
 import EventCreateScreen from '../dialogs/EventCreateScreen';
-import { startOfMonth } from 'date-fns';
-import CalendarGlance from '../components/Calendar/CalendarGlance';
+import { startOfMonth, addMonths } from 'date-fns';
+import Calendar from '../components/Calendar/Calendar';
+import UpcomingEventsWidget from '../components/Event/UpcomingEventsWidget';
+import GroupOverview from '../components/Group/GroupOverview';
+import WorkScheduleOverview from '../components/Event/WorkScheduleOverview';
 
 const HomeScreen: React.FC = () => {
     const theme = useTheme();
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { data: upcomingEvents, isLoading, error, refetch } = useApi<Events[]>(getUpcomingEvents);
+
+    // API Hooks to get upcoming events and groups
+    const { data: upcomingEvents, isLoading: isLoadingEvents, error: errorEvents, refetch: refetchEvents } = useApi<Events[]>(getUpcomingEvents);
+    const { data: groups, isLoading: isLoadingGroups, error: errorGroups, refetch: refetchGroups } = useApi(getGroups);
+
     const [isEventCreateOpen, setIsEventCreateOpen] = useState(false);
     const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
 
@@ -46,11 +46,11 @@ const HomeScreen: React.FC = () => {
 
     const handleCloseEventCreate = () => {
         setIsEventCreateOpen(false);
-        refetch(); // Refresh the events list after creating a new event
+        refetchEvents(); // Refresh the events list after creating a new event
     };
 
     const handleEventCreated = () => {
-        refetch(); // Refresh events after creation
+        refetchEvents(); // Refresh events after creation
     };
 
     const handleViewAllEvents = () => {
@@ -61,64 +61,52 @@ const HomeScreen: React.FC = () => {
         navigate('/groups');
     };
 
-    if (isLoading) return <CircularProgress />;
-    if (error) return <Typography color="error">Error: {error}</Typography>;
+    const changeMonth = (amount: number) => {
+        setCurrentMonth(addMonths(currentMonth, amount));
+    };
 
+    const goToToday = () => {
+        setCurrentMonth(startOfMonth(new Date()));
+    };
+
+    const handleDateClick = (date: Date) => {
+        console.log('Date clicked:', date);
+    };
+
+    const handleEventClick = (eventId: number) => {
+        navigate(`/events/${eventId}`);
+    };
+
+    // Render conditional content dynamically based on data availability and errors
     return (
-        <Container maxWidth="md">
+        <Container maxWidth="lg">
             <Box my={4}>
                 <Typography variant="h4" component="h1" gutterBottom>
                     Welcome, {user?.firstName || 'User'}!
                 </Typography>
 
-                <Grid2 container spacing={3}>
-                    <Grid2
-                        sx={{
-                            size: 12,
-                            '@media (min-width:600px)': { size: 8 }
-                        }}
-                    >
+                <Grid2 container spacing={4}>
+                    {/* Upcoming Events Section */}
+                    <Grid2 size={{ xs: 12, md: 8, lg: 6 }}>
                         <Paper elevation={3} sx={{ p: 2 }}>
-                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                                <Typography variant="h6">Upcoming Events</Typography>
-                                <Button
-                                    variant="outlined"
-                                    startIcon={<CalendarIcon />}
-                                    onClick={handleViewAllEvents}
-                                >
-                                    View All
-                                </Button>
-                            </Box>
-                            <List>
-                                {upcomingEvents && upcomingEvents.length > 0 ? (
-                                    upcomingEvents.slice(0, 5).map((event) => (
-                                        <ListItem key={event.id} disablePadding>
-                                            <ListItemButton onClick={() => navigate(`/events/${event.id}`)}>
-                                                <ListItemIcon>
-                                                    <EventIcon color="primary" />
-                                                </ListItemIcon>
-                                                <ListItemText
-                                                    primary={event.title}
-                                                    secondary={`${formatDate(event.startTime, 'PPp')} - ${formatDate(event.endTime, 'PPp')}`}
-                                                />
-                                            </ListItemButton>
-                                        </ListItem>
-                                    ))
-                                ) : (
-                                    <Typography variant="body2" color="textSecondary">
-                                        No upcoming events
-                                    </Typography>
-                                )}
-                            </List>
+                            {isLoadingEvents ? (
+                                <CircularProgress />
+                            ) : errorEvents ? (
+                                <Typography variant="body2" color="error">
+                                    Unable to load upcoming events.
+                                </Typography>
+                            ) : upcomingEvents && upcomingEvents.length > 0 ? (
+                                <UpcomingEventsWidget />
+                            ) : (
+                                <Typography variant="body2" color="textSecondary">
+                                    No upcoming events available.
+                                </Typography>
+                            )}
                         </Paper>
                     </Grid2>
 
-                    <Grid2
-                        sx={{
-                            size: 12,
-                            '@media (min-width:600px)': { size: 4 }
-                        }}
-                    >
+                    {/* Quick Actions Section */}
+                    <Grid2 size={{ xs: 12, md: 4, lg: 3 }}>
                         <Paper elevation={3} sx={{ p: 2 }}>
                             <Typography variant="h6" gutterBottom>
                                 Quick Actions
@@ -144,13 +132,53 @@ const HomeScreen: React.FC = () => {
                             </Box>
                         </Paper>
                     </Grid2>
-                </Grid2>
 
-                <Box mt={4}>
-                    <Paper elevation={3} sx={{ p: 2 }}>
-                        <CalendarGlance events={upcomingEvents || []} />
-                    </Paper>
-                </Box>
+                    <Grid2 size={{ xs: 12, lg: 9 }}>
+                        <Paper elevation={3} sx={{ p: 2 }}>
+                            <Calendar
+                                currentMonth={currentMonth}
+                                events={upcomingEvents || []}
+                                onDateClick={handleDateClick}
+                                onEventClick={handleEventClick}
+                                changeMonth={changeMonth}
+                                goToToday={goToToday}
+                                handleCreateEvent={handleCreateEvent}
+                            />
+                        </Paper>
+                    </Grid2>
+
+                    {/* Group Overview Section */}
+                    {isLoadingGroups ? (
+                        <Grid2 size={{ xs: 12, lg: 3 }}>
+                            <CircularProgress />
+                        </Grid2>
+                    ) : errorGroups ? (
+                        <Grid2 size={{ xs: 12 }}>
+                            <Typography variant="body2" color="error">
+                                Unable to load groups.
+                            </Typography>
+                        </Grid2>
+                    ) : groups && groups.length > 0 ? (
+                        <Grid2 size={{ xs: 12, lg: 3 }}>
+                            <Paper elevation={3} sx={{ p: 2 }}>
+                                <GroupOverview />
+                            </Paper>
+                        </Grid2>
+                    ) : (
+                        <Grid2 size={{ xs: 12, lg: 3 }}>
+                            <Typography variant="body2" color="textSecondary">
+                                No groups available.
+                            </Typography>
+                        </Grid2>
+                    )}
+
+                    {/* Work Schedule Section */}
+                    <Grid2 size={{ xs: 12, lg: 9 }}>
+                        <Paper elevation={3} sx={{ p: 2 }}>
+                            <WorkScheduleOverview />
+                        </Paper>
+                    </Grid2>
+                </Grid2>
             </Box>
 
             <Dialog
