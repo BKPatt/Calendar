@@ -1,4 +1,5 @@
 import { ApiResponse, PaginatedResponse } from "../types/event";
+import * as authService from '../services/auth';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
 
@@ -16,11 +17,13 @@ export const apiRequest = async <T>(
     body?: any,
     customHeaders?: Record<string, string>
 ): Promise<ApiResponse<T>> => {
-    const token = localStorage.getItem('authToken');
+    let accessToken = localStorage.getItem('access_token');
+    const refreshToken = localStorage.getItem('refresh_token');
 
+    // Define the headers
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...customHeaders,
     };
 
@@ -30,7 +33,30 @@ export const apiRequest = async <T>(
         body: body ? JSON.stringify(body) : undefined,
     };
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    let response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+
+    // If access token has expired, refresh the token
+    if (response.status === 401 && refreshToken) {
+        try {
+            const newAccessToken = await refreshAccessToken(refreshToken);
+            if (newAccessToken) {
+                // Retry the request with the new access token
+                accessToken = newAccessToken;
+                headers.Authorization = `Bearer ${newAccessToken}`;
+
+                // Retry the request with updated Authorization header
+                response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                    ...config,
+                    headers,
+                });
+            } else {
+                throw new Error('Token refresh failed');
+            }
+        } catch (error) {
+            console.error('Error refreshing access token:', error);
+            throw new Error('Authentication failed');
+        }
+    }
 
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -38,6 +64,26 @@ export const apiRequest = async <T>(
 
     const data = await response.json();
     return data as ApiResponse<T>;
+};
+
+/**
+ * Function to refresh the access token using the refresh token
+ * @param refreshToken - the refresh token
+ * @returns Promise with new access token
+ */
+const refreshAccessToken = async (refreshToken: string): Promise<string | null> => {
+    try {
+        const response = await authService.refreshToken(refreshToken);
+        if (response.access) {
+            localStorage.setItem('access_token', response.access);
+            return response.access;
+        } else {
+            throw new Error('Token refresh failed');
+        }
+    } catch (error) {
+        console.error('Error refreshing access token:', error);
+        return null;
+    }
 };
 
 /**

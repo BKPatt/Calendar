@@ -13,6 +13,8 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import authenticate
+from rest_framework_simplejwt.views import TokenRefreshView
+
 from ..models import CustomUser, UserProfile
 from ..serializers import UserSerializer
 
@@ -192,3 +194,12 @@ def verify_token(request):
 def current_user(request):
     serializer = UserSerializer(request.user)
     return Response({'data': serializer.data})
+class CustomTokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        try:
+            logger.info("Refreshing token.")
+            response = super().post(request, *args, **kwargs)
+            return Response({'data': response.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Token refresh failed: {str(e)}")
+            return Response({'data': {'error': 'Token refresh failed'}}, status=status.HTTP_400_BAD_REQUEST)

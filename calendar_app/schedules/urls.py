@@ -7,7 +7,7 @@ from .views_organized.event_views import EventViewSet, EventShareView, EventCrea
 from .views_organized.schedule_views import WorkScheduleViewSet, RecurringScheduleViewSet, AvailabilityViewSet, UserAvailabilityView
 from .views_organized.notification_views import NotificationViewSet, NotificationPreferencesView
 from .views_organized.search_views import SearchView
-from .views_organized.auth_views import AuthView, PasswordResetView, EmailVerificationView, RegisterView, LoginView, LogoutView, current_user, verify_token
+from .views_organized.auth_views import AuthView, PasswordResetView, EmailVerificationView, RegisterView, LoginView, LogoutView, current_user, verify_token, CustomTokenRefreshView
 from .views_organized.calendar_views import CalendarSyncView, GoogleCalendarSyncView, OutlookCalendarSyncView, ImportExportView
 from .views_organized.invitation_views import InvitationViewSet
 from .views_organized.attachent_views import AttachmentViewSet
@@ -80,6 +80,7 @@ urlpatterns = [
     path('auth/logout/', LogoutView.as_view(), name='logout'),
     path('auth/verify-token/', verify_token, name='verify_token'),
     path('auth/user/', current_user, name='current_user'),
+    path('auth/token/refresh/', CustomTokenRefreshView.as_view(), name='token'),
     
     # Protected paths that require authentication
     path('events/create/', EventCreateView.as_view(), name='event-create'),
