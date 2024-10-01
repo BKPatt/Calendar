@@ -28,7 +28,7 @@ class UserProfile(models.Model):
     external_calendar_token = models.CharField(max_length=255, blank=True, null=True)
     last_known_location = models.CharField(max_length=255, blank=True, null=True)
     location_sharing_enabled = models.BooleanField(default=False)
-    work_schedule_preferences = models.JSONField(default=dict, blank=True)  # New field to store work schedule preferences
+    work_schedule_preferences = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         return f"{self.user.username}'s profile"
@@ -254,7 +254,6 @@ class WorkSchedule(models.Model):
         """
         if date < self.effective_date or (self.end_date and date > self.end_date):
             raise ValidationError("Date is outside the effective range for this schedule.")
-        # Here, you can add logic to modify the schedule or add exceptions for specific dates.
 
     def clean(self):
         if self.start_time >= self.end_time:

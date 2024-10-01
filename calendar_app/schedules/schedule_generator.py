@@ -18,16 +18,14 @@ class RecurringEventGenerator:
         if not end_date:
             raise ValueError("An end date must be specified either in the recurring schedule or as an argument.")
 
-        # Map frequency strings to corresponding timedelta intervals
         frequency_mapping = {
             'DAILY': timedelta(days=1),
             'WEEKLY': timedelta(weeks=self.recurring_schedule.interval),
-            'MONTHLY': timedelta(days=30 * self.recurring_schedule.interval),  # Approximation for simplicity
+            'MONTHLY': timedelta(days=30 * self.recurring_schedule.interval),
             'YEARLY': timedelta(days=365 * self.recurring_schedule.interval)
         }
 
         while current_date <= end_date:
-            # Create an event for the current recurrence
             start_time = timezone.datetime.combine(current_date, self.recurring_schedule.start_time)
             end_time = timezone.datetime.combine(current_date, self.recurring_schedule.end_time)
 
@@ -50,7 +48,6 @@ class RecurringEventGenerator:
             event.save()
             events.append(event)
 
-            # Advance the current_date based on the frequency
             current_date += frequency_mapping.get(self.recurring_schedule.frequency, timedelta(days=1))
 
         return events

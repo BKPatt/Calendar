@@ -13,18 +13,14 @@ class ETACalculator:
         Uses the start and end locations of the user (if available) and updates the event's ETA.
         """
         start_location = self.event.created_by.userprofile.last_known_location
-        
-        # Get the end location from the event's location
         end_location = self.event.location
 
         if not start_location or not end_location:
             raise ValueError("Both start and end locations are required to calculate ETA.")
 
-        # Use the calculate_eta utility to compute the ETA
         new_eta = calculate_eta(start_location, end_location)
 
         if new_eta:
-            # Update the event's ETA and save the event
             self.event.eta = new_eta
             self.event.save()
             return new_eta

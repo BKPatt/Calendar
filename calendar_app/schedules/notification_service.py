@@ -22,14 +22,12 @@ class NotificationManager:
         message = f"Reminder: Event '{self.event.title}' is starting at {self.event.start_time}."
 
         for user in users:
-            # Create in-app notification
             Notification.objects.create(
                 recipient=user,
                 notification_type='reminder',
                 message=message
             )
 
-            # Send email notification
             if user.userprofile.email_notifications:
                 send_mail(
                     f"Event Reminder: {self.event.title}",
@@ -39,7 +37,6 @@ class NotificationManager:
                     fail_silently=False,
                 )
 
-            # Send push notification
             if user.userprofile.push_notifications:
                 device_tokens = UserDeviceToken.objects.filter(user=user, is_active=True)
                 for token in device_tokens:
@@ -52,21 +49,19 @@ class NotificationManager:
         if not self.schedule:
             raise ValueError("Schedule is required to send schedule change notifications")
 
-        users = self.schedule.user.shared_events.all()  # Users involved in the schedule
+        users = self.schedule.user.shared_events.all()
         if not users:
             return
 
         message = f"Recurring schedule '{self.schedule.title}' has been updated."
 
         for user in users:
-            # Create in-app notification
             Notification.objects.create(
                 recipient=user,
                 notification_type='schedule_change',
                 message=message
             )
 
-            # Send email notification
             if user.userprofile.email_notifications:
                 send_mail(
                     f"Schedule Change Notification: {self.schedule.title}",
@@ -76,7 +71,6 @@ class NotificationManager:
                     fail_silently=False,
                 )
 
-            # Send push notification
             if user.userprofile.push_notifications:
                 device_tokens = UserDeviceToken.objects.filter(user=user, is_active=True)
                 for token in device_tokens:
