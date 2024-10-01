@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { Container, Typography, TextField, Button, Link, Box, Alert } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
+import CryptoJS from 'crypto-js';
 
 const SignIn: React.FC = () => {
     const [username, setUsername] = useState('');
@@ -13,26 +14,34 @@ const SignIn: React.FC = () => {
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         setError('');
+
         try {
-            await login(username, password);
-            console.log('Login successful, navigating to home');
+            const encryptionKey = process.env.REACT_APP_AES_ENCRYPTION_KEY || '';
+            const ivKey = process.env.REACT_APP_AES_IV || '';
+
+            const key = CryptoJS.enc.Utf8.parse(encryptionKey);
+            const iv = CryptoJS.enc.Utf8.parse(ivKey);
+
+            const encrypted = CryptoJS.AES.encrypt(password, key, {
+                iv: iv,
+                mode: CryptoJS.mode.CBC,
+                padding: CryptoJS.pad.Pkcs7
+            });
+
+            const encryptedPassword = encrypted.ciphertext.toString(CryptoJS.enc.Base64);
+
+            await login(username, encryptedPassword);
             navigate('/');
         } catch (error) {
             console.error('Login error:', error);
-            if (error instanceof Error) {
-                setError(error.message || 'Failed to sign in. Please check your credentials.');
-            } else {
-                setError('An unexpected error occurred. Please try again.');
-            }
+            setError('Failed to sign in. Please check your credentials.');
         }
     };
 
     return (
         <Container component="main" maxWidth="xs">
             <Box sx={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <Typography component="h1" variant="h5">
-                    Sign in
-                </Typography>
+                <Typography component="h1" variant="h5">Sign in</Typography>
                 {error && <Alert severity="error" sx={{ mt: 2, width: '100%' }}>{error}</Alert>}
                 <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
                     <TextField
@@ -59,12 +68,8 @@ const SignIn: React.FC = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                     />
-                    <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
-                        Sign In
-                    </Button>
-                    <Link component={RouterLink} to="/signup" variant="body2">
-                        {"Don't have an account? Sign Up"}
-                    </Link>
+                    <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>Sign In</Button>
+                    <Link component={RouterLink} to="/signup" variant="body2">{"Don't have an account? Sign Up"}</Link>
                 </Box>
             </Box>
         </Container>
