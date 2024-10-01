@@ -63,7 +63,8 @@ interface DayCellProps {
 }
 
 const DayCell = styled(Card, {
-    shouldForwardProp: (prop) => prop !== 'isToday' && prop !== 'isSelected' && prop !== 'isCurrentMonth',
+    shouldForwardProp: (prop) =>
+        prop !== 'isToday' && prop !== 'isSelected' && prop !== 'isCurrentMonth',
 })<DayCellProps>(({ theme, isToday, isSelected, isCurrentMonth }) => ({
     height: '100%',
     aspectRatio: '1 / 1',
@@ -93,7 +94,9 @@ const DayCell = styled(Card, {
     },
 }));
 
-const DayNumber = styled(Typography)<{ isToday?: boolean }>(({ theme, isToday }) => ({
+const DayNumber = styled(Typography, {
+    shouldForwardProp: (prop) => prop !== 'isToday',
+})<{ isToday?: boolean }>(({ theme, isToday }) => ({
     fontWeight: isToday ? 'bold' : 'normal',
     color: isToday ? theme.palette.secondary.main : theme.palette.text.primary,
 }));

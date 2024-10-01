@@ -22,6 +22,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         checkAuthStatus();
     }, []);
 
+    useEffect(() => {
+        console.log('isAuthenticated:', isAuthenticated);
+        console.log('isLoading:', isLoading);
+        console.log('user:', user);
+    }, [isAuthenticated, isLoading, user]);
+
     const checkAuthStatus = async () => {
         setIsLoading(true);
         const token = localStorage.getItem('refresh_token');

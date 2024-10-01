@@ -3,6 +3,7 @@ import { apiRequest, handleApiError } from '../utils/apiHelpers';
 
 export const login = async (username: string, password: string): Promise<AuthResponse> => {
     const response = await apiRequest<AuthResponse>('/auth/login/', 'POST', { username, password });
+    console.log(response)
     if (!response.data || !response.data.access_token || !response.data.refresh_token) {
         throw new Error('Invalid response from login');
     }
