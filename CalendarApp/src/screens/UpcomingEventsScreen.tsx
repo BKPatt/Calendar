@@ -47,7 +47,6 @@ const UpcomingEventsScreen: React.FC = () => {
         if (events) {
             let filtered = events;
 
-            // Apply search
             if (searchTerm) {
                 filtered = filtered.filter(event =>
                     event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -55,15 +54,13 @@ const UpcomingEventsScreen: React.FC = () => {
                 );
             }
 
-            // Apply filter
             if (filterType !== 'all') {
                 filtered = filtered.filter(event => event.eventType === filterType);
             }
 
-            // Apply sort
             filtered.sort((a, b) => {
                 if (sortBy === 'date') {
-                    return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+                    return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
                 } else {
                     return a.title.localeCompare(b.title);
                 }
@@ -168,7 +165,7 @@ const UpcomingEventsScreen: React.FC = () => {
                                     secondary={
                                         <>
                                             <Typography variant="body2" color="text.secondary">
-                                                {formatDate(event.startTime, 'PPp')} - {formatDate(event.endTime, 'PPp')}
+                                                {formatDate(event.start_time, 'PPp')} - {formatDate(event.end_time, 'PPp')}
                                             </Typography>
                                             <Typography variant="body2" color="text.secondary">
                                                 {event.location}

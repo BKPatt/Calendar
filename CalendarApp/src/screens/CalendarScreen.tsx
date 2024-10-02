@@ -7,9 +7,9 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
-import { getEvents } from '../services/api';
+import { getUpcomingEvents } from '../services/api';
 import { Events } from '../types/event';
-import { addMonths, endOfMonth, format, startOfMonth, subMonths } from 'date-fns';
+import { addMonths, endOfMonth, format, startOfMonth } from 'date-fns';
 import Calendar from '../components/Calendar/Calendar';
 import EventForm from '../components/Event/EventForm';
 
@@ -20,40 +20,40 @@ const CalendarScreen: React.FC = () => {
 
     const navigate = useNavigate();
 
-    // Fetch events using the existing API hook
-    const { data: events, isLoading, error, refetch } = useApi<Events[]>(() =>
-        getEvents({
-            start: format(startOfMonth(currentMonth), 'yyyy-MM-dd'),
-            end: format(endOfMonth(currentMonth), 'yyyy-MM-dd'),
-        })
-    );
+    const { data: events, isLoading, error, refetch } = useApi<Events[]>(getUpcomingEvents);
 
-    // Function to change month
+    console.log('API request:', {
+        start: format(startOfMonth(currentMonth), 'yyyy-MM-dd'),
+        end: format(endOfMonth(currentMonth), 'yyyy-MM-dd'),
+    });
+
+    console.log('Fetched events:', events);
+
     const changeMonth = useCallback((amount: number) => {
-        setCurrentMonth((prevMonth) => (amount > 0 ? addMonths(prevMonth, 1) : subMonths(prevMonth, 1)));
+        setCurrentMonth((prevMonth) => addMonths(prevMonth, amount));
     }, []);
 
-    // Function to reset calendar to the current date
     const goToToday = useCallback(() => {
         setCurrentMonth(new Date());
         setSelectedDate(new Date());
     }, []);
 
-    // Function to open event creation form
     const handleCreateEvent = useCallback(() => {
         setIsEventFormOpen(true);
     }, []);
 
-    // Function to close event creation form
     const handleEventFormClose = useCallback(() => {
         setIsEventFormOpen(false);
         refetch();
     }, [refetch]);
 
-    // Navigate to the event details page when an event is clicked
     const handleEventClick = useCallback((eventId: number) => {
         navigate(`/events/${eventId}`);
     }, [navigate]);
+
+    const handleDateClick = useCallback((date: Date) => {
+        setSelectedDate(date);
+    }, []);
 
     if (isLoading) return <Typography>Loading calendar...</Typography>;
     if (error) return <Typography color="error">Error: {error}</Typography>;
@@ -61,18 +61,16 @@ const CalendarScreen: React.FC = () => {
     return (
         <Container maxWidth="lg">
             <Box my={4}>
-                {/* Calendar component */}
                 <Calendar
                     currentMonth={currentMonth}
                     events={events || []}
-                    onDateClick={setSelectedDate}
+                    onDateClick={handleDateClick}
                     onEventClick={handleEventClick}
                     changeMonth={changeMonth}
                     goToToday={goToToday}
                     handleCreateEvent={handleCreateEvent}
                 />
 
-                {/* Dialog for creating a new event */}
                 <Dialog open={isEventFormOpen} onClose={handleEventFormClose} maxWidth="md" fullWidth>
                     <EventForm
                         open={isEventFormOpen}

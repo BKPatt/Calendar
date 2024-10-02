@@ -151,11 +151,7 @@ class EventSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation['startTime'] = representation.pop('start_time')
-        representation['endTime'] = representation.pop('end_time')
-        representation['createdBy'] = representation.pop('created_by')
-        representation['sharedWith'] = representation.pop('shared_with', [])
-        representation['isAllDay'] = representation.pop('is_all_day', False)
+        representation['shared_with'] = representation.pop('shared_with', [])
         return representation
 
     def to_internal_value(self, data):
@@ -169,17 +165,20 @@ class EventSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         reminders_data = validated_data.pop('reminders', [])
-        request = self.context['request']
-        event = Event.objects.create(created_by=request.user, **validated_data)
+        recurrence_rule = validated_data.pop('recurrence_rule', None)
+        event = Event.objects.create(**validated_data)
+        
+        if recurrence_rule:
+            RecurringSchedule.objects.create(
+                event=event,
+                frequency=recurrence_rule.get('frequency'),
+                interval=recurrence_rule.get('interval', 1),
+                days_of_week=recurrence_rule.get('days_of_week'),
+            )
+        
         for reminder_data in reminders_data:
             EventReminder.objects.create(event=event, **reminder_data)
         return event
-    
-    def validate(self, data):
-        if 'start_time' in data and 'end_time' in data:
-            if data['start_time'] >= data['end_time']:
-                raise serializers.ValidationError("End time must be after start time")
-        return data
 
 class AvailabilitySerializer(serializers.ModelSerializer):
     class Meta:

@@ -127,10 +127,6 @@ class RecurringSchedule(models.Model):
         return events
 
     def clean(self):
-        if self.start_time >= self.end_time:
-            raise ValidationError("End time must be after start time")
-        if self.end_date and self.start_date > self.end_date:
-            raise ValidationError("End date must be after start date")
         if self.frequency == 'WEEKLY' and not self.days_of_week:
             raise ValidationError("Days of week must be specified for weekly recurrence")
         if self.frequency == 'MONTHLY' and self.day_of_month is None:
@@ -173,6 +169,7 @@ class Event(models.Model):
         ('meeting', 'Meeting'),
         ('appointment', 'Appointment'),
         ('reminder', 'Reminder'),
+        ('work', 'Work'),
         ('other', 'Other'),
     )
 
@@ -181,7 +178,7 @@ class Event(models.Model):
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     location = models.CharField(max_length=200, blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_events')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_events', null=False)
     shared_with = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='shared_events', blank=True)
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True, related_name='events')
     recurring = models.BooleanField(default=False)

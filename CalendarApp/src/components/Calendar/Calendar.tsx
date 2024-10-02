@@ -127,10 +127,19 @@ const Calendar: React.FC<CalendarProps> = ({
         const startDate = startOfWeek(monthStart);
         const endDate = endOfWeek(monthEnd);
 
-        return eachDayOfInterval({ start: startDate, end: endDate }).map((day) => ({
-            date: day,
-            events: events?.filter((event) => isSameDay(new Date(event.startTime), day)) || [],
-        }));
+        return eachDayOfInterval({ start: startDate, end: endDate }).map((day) => {
+            const dayEvents = events?.filter(
+                (event) =>
+                    new Date(event.start_time) <= day && new Date(event.end_time) >= day
+            ) || [];
+
+            console.log(dayEvents)
+
+            return {
+                date: day,
+                events: dayEvents,
+            };
+        });
     }, [currentMonth, events]);
 
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -188,6 +197,9 @@ const Calendar: React.FC<CalendarProps> = ({
                                             {!isMobile && (
                                                 <Typography variant="caption" noWrap>
                                                     {event.title}
+                                                    {new Date(event.start_time).getDate() === new Date(event.end_time).getDate() && (
+                                                        <> ({format(new Date(event.start_time), 'h:mm a')})</>
+                                                    )}
                                                 </Typography>
                                             )}
                                         </Box>

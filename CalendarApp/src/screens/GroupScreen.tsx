@@ -88,7 +88,7 @@ const GroupScreen: React.FC = () => {
                             </ListItemAvatar>
                             <ListItemText
                                 primary={event.title}
-                                secondary={`${formatDate(event.startTime, 'PPp')} - ${formatDate(event.endTime, 'PPp')}`}
+                                secondary={`${formatDate(event.start_time, 'PPp')} - ${formatDate(event.end_time, 'PPp')}`}
                             />
                         </ListItem>
                     ))

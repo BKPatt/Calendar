@@ -39,7 +39,7 @@ const EventDetails: React.FC = () => {
 
     const handleEventCreated = () => {
         setIsCreateEventOpen(false);
-        // Refresh events list or handle post-event creation logic here
+        // TODO: Refresh events list or handle post-event creation logic here
     };
 
     useEffect(() => {
@@ -96,7 +96,7 @@ const EventDetails: React.FC = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <AccessTime sx={{ mr: 1 }} />
                 <Typography>
-                    {format(new Date(event.startTime), 'PPp')} - {format(new Date(event.endTime), 'PPp')}
+                    {format(new Date(event.start_time), 'PPp')} - {format(new Date(event.end_time), 'PPp')}
                 </Typography>
             </Box>
             {event.location && (
@@ -114,7 +114,7 @@ const EventDetails: React.FC = () => {
             {event.group && (
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <Group sx={{ mr: 1 }} />
-                    <Typography>{event.group?.toString()}</Typography> {/* Update to fit your group handling */}
+                    <Typography>{event.group?.toString()}</Typography>
                 </Box>
             )}
             <Typography variant="subtitle1" gutterBottom>

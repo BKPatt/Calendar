@@ -34,7 +34,6 @@ export const apiRequest = async <T>(
 
     let response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
-    // If access token has expired, refresh the token
     if (response.status === 401 && refreshToken) {
         try {
             const newAccessToken = await refreshAccessToken(refreshToken);

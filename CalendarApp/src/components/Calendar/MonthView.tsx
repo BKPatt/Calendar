@@ -83,7 +83,7 @@ const MonthView: React.FC = () => {
 
     const getEventsForDay = (day: Date): Events[] => {
         return events?.filter(event =>
-            isSameDay(new Date(event.startTime), day)
+            isSameDay(new Date(event.start_time), day)
         ) || [];
     };
 

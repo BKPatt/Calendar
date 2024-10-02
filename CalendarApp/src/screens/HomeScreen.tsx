@@ -33,7 +33,6 @@ const HomeScreen: React.FC = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
 
-    // API Hooks to get upcoming events and groups
     const { data: upcomingEvents, isLoading: isLoadingEvents, error: errorEvents, refetch: refetchEvents } = useApi<Events[]>(getUpcomingEvents);
     const { data: groups, isLoading: isLoadingGroups, error: errorGroups, refetch: refetchGroups } = useApi(getGroups);
 
@@ -46,11 +45,11 @@ const HomeScreen: React.FC = () => {
 
     const handleCloseEventCreate = () => {
         setIsEventCreateOpen(false);
-        refetchEvents(); // Refresh the events list after creating a new event
+        refetchEvents();
     };
 
     const handleEventCreated = () => {
-        refetchEvents(); // Refresh events after creation
+        refetchEvents();
     };
 
     const handleViewAllEvents = () => {
@@ -77,7 +76,6 @@ const HomeScreen: React.FC = () => {
         navigate(`/events/${eventId}`);
     };
 
-    // Render conditional content dynamically based on data availability and errors
     return (
         <Container maxWidth="lg">
             <Box my={4}>
@@ -86,7 +84,6 @@ const HomeScreen: React.FC = () => {
                 </Typography>
 
                 <Grid2 container spacing={4}>
-                    {/* Upcoming Events Section */}
                     <Grid2 size={{ xs: 12, md: 8, lg: 6 }}>
                         <Paper elevation={3} sx={{ p: 2 }}>
                             {isLoadingEvents ? (
@@ -105,7 +102,6 @@ const HomeScreen: React.FC = () => {
                         </Paper>
                     </Grid2>
 
-                    {/* Quick Actions Section */}
                     <Grid2 size={{ xs: 12, md: 4, lg: 3 }}>
                         <Paper elevation={3} sx={{ p: 2 }}>
                             <Typography variant="h6" gutterBottom>
@@ -147,7 +143,6 @@ const HomeScreen: React.FC = () => {
                         </Paper>
                     </Grid2>
 
-                    {/* Group Overview Section */}
                     {isLoadingGroups ? (
                         <Grid2 size={{ xs: 12, lg: 3 }}>
                             <CircularProgress />
@@ -172,7 +167,6 @@ const HomeScreen: React.FC = () => {
                         </Grid2>
                     )}
 
-                    {/* Work Schedule Section */}
                     <Grid2 size={{ xs: 12, lg: 9 }}>
                         <Paper elevation={3} sx={{ p: 2 }}>
                             <WorkScheduleOverview />

@@ -81,7 +81,7 @@ const SettingsScreen: React.FC = () => {
         }
     };
 
-    const handleThemeChange = (e: SelectChangeEvent<Theme>) => {  // Use SelectChangeEvent
+    const handleThemeChange = (e: SelectChangeEvent<Theme>) => {
         const newTheme = e.target.value as Theme;
         setTheme(newTheme);
     };
@@ -132,7 +132,6 @@ const SettingsScreen: React.FC = () => {
                     Settings
                 </Typography>
                 <List>
-                    {/* Notification Settings */}
                     <ListItem>
                         <ListItemIcon>
                             <NotificationsIcon />
@@ -170,7 +169,6 @@ const SettingsScreen: React.FC = () => {
                         </ListItemSecondaryAction>
                     </ListItem>
 
-                    {/* Theme Settings */}
                     <Divider />
                     <ListItem>
                         <ListItemIcon>
@@ -186,7 +184,6 @@ const SettingsScreen: React.FC = () => {
                     </ListItem>
                     <Divider />
 
-                    {/* Other Settings */}
                     <ListItem onClick={() => setIsChangePasswordOpen(true)}>
                         <ListItemButton>
                             <LockIcon />
@@ -208,7 +205,6 @@ const SettingsScreen: React.FC = () => {
                 </List>
             </Paper>
 
-            {/* Change Password Dialog */}
             <Dialog open={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)}>
                 <DialogTitle>Change Password</DialogTitle>
                 <DialogContent>
@@ -246,7 +242,6 @@ const SettingsScreen: React.FC = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* Delete Account Dialog */}
             <Dialog open={isDeleteAccountOpen} onClose={() => setIsDeleteAccountOpen(false)}>
                 <DialogTitle>Delete Account</DialogTitle>
                 <DialogContent>

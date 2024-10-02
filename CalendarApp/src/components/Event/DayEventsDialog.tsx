@@ -41,7 +41,7 @@ const DayEventsDialog: React.FC<DayEventsDialogProps> = ({ open, onClose, date, 
 
     const handleEventCreated = () => {
         setIsCreateEventOpen(false);
-        // Refresh events list or handle post-event creation logic here
+        // TODO: Refresh events list or handle post-event creation logic here
     };
 
     return (
@@ -80,7 +80,7 @@ const DayEventsDialog: React.FC<DayEventsDialogProps> = ({ open, onClose, date, 
                                         secondary={
                                             <>
                                                 <Typography component="span" variant="body2" color="text.primary">
-                                                    {format(new Date(event.startTime), 'h:mm a')} - {format(new Date(event.endTime), 'h:mm a')}
+                                                    {format(new Date(event.start_time), 'h:mm a')} - {format(new Date(event.end_time), 'h:mm a')}
                                                 </Typography>
                                                 {event.location && (
                                                     <>

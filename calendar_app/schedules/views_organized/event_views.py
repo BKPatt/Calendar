@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.utils import timezone
 from django.http import HttpResponse
 import csv
-from rest_framework_simplejwt.authentication import JWTAuthentication
+from dateutil.parser import parse
 
 from ..models import Event, EventReminder, RecurringSchedule, CustomUser
 from ..serializers import EventSerializer, EventExportSerializer, RecurringScheduleSerializer
@@ -26,6 +26,58 @@ class EventViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'description']
     ordering_fields = ['start_time', 'end_time', 'created_at']
 
+    def create(self, request, *args, **kwargs):
+        try:
+            data = request.data.copy()
+            data['created_by'] = request.user.id
+
+            if 'start_time' not in data or 'end_time' not in data:
+                return Response(
+                    {'error': 'Start time and end time are required.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            data['event_type'] = data.pop('eventType', 'other')
+            data['is_all_day'] = data.pop('isAllDay', False)
+
+            if data.get('recurring'):
+                recurrence_rule = data.pop('recurrence_rule', {})
+                
+                try:
+                    start_time = parse(data['start_time']).time()
+                    end_time = parse(data['end_time']).time()
+                except ValueError as e:
+                    return Response(
+                        {'error': f'Invalid datetime format: {str(e)}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                recurring_schedule = RecurringSchedule.objects.create(
+                    user=request.user,
+                    title=data['title'],
+                    start_time=start_time,
+                    end_time=end_time,
+                    frequency=recurrence_rule.get('frequency'),
+                    interval=recurrence_rule.get('interval', 1),
+                    start_date=data['start_date'],
+                    end_date=recurrence_rule.get('end_date'),
+                    days_of_week=recurrence_rule.get('days_of_week'),
+                )
+                data['recurring_schedule'] = recurring_schedule.id
+
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            event = serializer.save(created_by=request.user)
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Error creating event: {str(e)}")
+            return Response(
+                {'error': 'Event creation failed due to an internal error.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
     def get_permissions(self):
         """Customize permissions based on the action."""
         if self.action == 'list':
@@ -42,49 +94,6 @@ class EventViewSet(viewsets.ModelViewSet):
             Q(shared_with=user) | 
             Q(group__members=user)
         ).distinct()
-
-    def create(self, request, *args, **kwargs):
-        try:
-            data = request.data.copy()
-            data['created_by'] = request.user.id
-
-            if 'startTime' not in data or 'endTime' not in data:
-                return Response(
-                    {'error': 'Start time and end time are required.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            data['start_time'] = data.pop('startTime')
-            data['end_time'] = data.pop('endTime')
-            data['event_type'] = data.pop('eventType', 'other')
-            data['is_all_day'] = data.pop('isAllDay', False)
-
-            if data.get('recurring'):
-                recurrence_rule = data.pop('recurrenceRule', {})
-                recurring_schedule = RecurringSchedule.objects.create(
-                    user=request.user,
-                    title=data['title'],
-                    start_time=data['start_time'],
-                    end_time=data['end_time'],
-                    frequency=recurrence_rule.get('frequency'),
-                    interval=recurrence_rule.get('interval', 1),
-                    start_date=data['start_time'],
-                    end_date=recurrence_rule.get('end_date'),
-                )
-                data['recurring_schedule'] = recurring_schedule.id
-
-            serializer = self.get_serializer(data=data)
-            serializer.is_valid(raise_exception=True)
-            event = serializer.save()
-
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            logger.error(f"Error creating event: {str(e)}")
-            return Response(
-                {'error': 'Event creation failed due to an internal error.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
     @action(detail=True, methods=['post'])
     def share(self, request, pk=None):
@@ -164,16 +173,7 @@ class EventViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(upcoming_events, many=True)
             serialized_data = serializer.data
 
-            camelized_data = []
-            for event_data in serialized_data:
-                camelized_event = {}
-                for key, value in event_data.items():
-                    components = key.split('_')
-                    camelized_key = components[0] + ''.join(x.capitalize() for x in components[1:])
-                    camelized_event[camelized_key] = value
-                camelized_data.append(camelized_event)
-
-            return Response({"data": camelized_data})
+            return Response({"data": serialized_data})
 
         except Exception as e:
             logger.error(f"Error fetching upcoming events: {str(e)}")

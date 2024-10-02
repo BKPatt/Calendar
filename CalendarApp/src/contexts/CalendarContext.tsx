@@ -43,7 +43,7 @@ export const CalendarProvider: React.FC<{ children: ReactNode }> = ({ children }
 
     const getEventsForDay = useCallback((date: Date) => {
         const dateString = formatDate(date);
-        return events.filter(event => event.startTime.startsWith(dateString));
+        return events.filter(event => event.start_time.startsWith(dateString));
     }, [events, formatDate]);
 
     const value: CalendarContextType = {

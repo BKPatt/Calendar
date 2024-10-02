@@ -1,7 +1,7 @@
 import { Group } from "./group";
 import { User } from "./user";
 
-export type EventType = 'meeting' | 'appointment' | 'social' | 'other';
+export type EventType = 'meeting' | 'appointment' | 'social' | 'work' | 'other';
 
 export interface Events {
     id?: number;
@@ -9,16 +9,16 @@ export interface Events {
     description?: string;
     eventType: EventType;
     location?: string;
-    startTime: string;
-    endTime: string;
+    start_time: string;
+    end_time: string;
+    start_date: string;
     created_by?: number;
     group?: number;
     recurring: boolean;
-    recurrenceRule?: RecurrenceRule;
+    recurrence_rule?: RecurrenceRule;
     sharedWith: number[];
     eta?: string;
     isAllDay: boolean;
-    reminder?: string;
     color: string;
     attachments?: Attachment[];
     createdAt?: string;
@@ -30,13 +30,13 @@ export interface Events {
 }
 
 export interface RecurrenceRule {
-    frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+    frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
     interval: number;
     endDate?: string;
     occurrences?: number;
+    days_of_week?: string[];
 }
 
-// Availability and Work Schedule types
 export interface Availability {
     id: number;
     user: User;
@@ -58,7 +58,6 @@ export interface WorkSchedule {
     endDate?: string;
 }
 
-// Invitation related types
 export type InvitationType = 'group' | 'event';
 export type InvitationStatus = 'pending' | 'accepted' | 'declined';
 
@@ -76,7 +75,6 @@ export interface Invitation {
     expirationDate?: string;
 }
 
-// Notification related types
 export type NotificationType = 'event_reminder' | 'invitation' | 'group_update' | 'event_update' | 'system';
 export type DeliveryMethod = 'in_app' | 'email' | 'push';
 
@@ -93,7 +91,6 @@ export interface Notifications {
     deliveryMethod: DeliveryMethod;
 }
 
-// Other types
 export interface Tag {
     id: number;
     name: string;
@@ -116,7 +113,6 @@ export interface UserDeviceToken {
     lastUsed: string;
 }
 
-// API related types
 export interface ApiResponse<T> {
     data: T;
     message?: string;
@@ -130,10 +126,8 @@ export interface PaginatedResponse<T> extends ApiResponse<T> {
     previous?: string | null;
 }
 
-// Form related types
 export type FormErrors<T> = Partial<Record<keyof T, string>>;
 
-// Navigation related types
 export type RootStackParamList = {
     Home: undefined;
     Calendar: undefined;

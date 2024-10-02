@@ -52,7 +52,7 @@ const EventList: React.FC = () => {
 
     const handleEventCreated = () => {
         setIsCreateEventOpen(false);
-        // Refresh events list or handle post-event creation logic here
+        // TODO: Refresh events list or handle post-event creation logic here
     };
 
     const handleEditEvent = (event: Events) => {
@@ -103,7 +103,7 @@ const EventList: React.FC = () => {
                                     secondary={
                                         <>
                                             <Typography component="span" variant="body2" color="text.primary">
-                                                {format(new Date(event.startTime), 'PPp')} - {format(new Date(event.endTime), 'PPp')}
+                                                {format(new Date(event.start_time), 'PPp')} - {format(new Date(event.end_time), 'PPp')}
                                             </Typography>
                                             <br />
                                             {event.location && (

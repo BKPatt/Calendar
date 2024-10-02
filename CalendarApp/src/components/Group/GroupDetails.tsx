@@ -92,7 +92,7 @@ const GroupDetails: React.FC = () => {
                             </ListItemAvatar>
                             <ListItemText
                                 primary={event.title}
-                                secondary={`${new Date(event.startTime).toLocaleString()} - ${new Date(event.endTime).toLocaleString()}`}
+                                secondary={`${new Date(event.start_time).toLocaleString()} - ${new Date(event.end_time).toLocaleString()}`}
                             />
                         </ListItem>
                     ))}

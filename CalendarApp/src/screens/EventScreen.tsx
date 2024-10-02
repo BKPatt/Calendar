@@ -167,7 +167,7 @@ const EventScreen: React.FC = () => {
                         <Box display="flex" alignItems="center" mb={1}>
                             <ScheduleIcon sx={{ mr: 1 }} color="action" />
                             <Typography>
-                                {formatDate(event.startTime, 'PPp')} - {formatDate(event.endTime, 'PPp')}
+                                {formatDate(event.start_time, 'PPp')} - {formatDate(event.end_time, 'PPp')}
                             </Typography>
                         </Box>
                         {event.location && (

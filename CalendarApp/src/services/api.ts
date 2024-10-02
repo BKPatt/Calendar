@@ -4,12 +4,11 @@ import { User, UserProfile } from '../types/user';
 import { apiRequest, getPaginatedResults, handleApiError } from '../utils/apiHelpers';
 import { getCurrentUser } from './auth';
 
-// User-related API calls
 export async function getUserProfile(userId: number): Promise<ApiResponse<UserProfile>> {
     try {
         const response = await apiRequest<UserProfile>(`/users/${userId}/`, 'GET');
         return {
-            data: response.data,  // Access data from the ApiResponse
+            data: response.data,
             message: 'User profile fetched successfully',
         };
     } catch (error) {
@@ -28,12 +27,10 @@ export const updateUserProfile = async (
     userId: number,
     userData: Partial<UserProfile>
 ): Promise<ApiResponse<UserProfile>> => {
-    // Use the `apiRequest` function to send a PUT request to update the user's profile
     const endpoint = `/users/${userId}/profile/`;
     return await apiRequest<UserProfile>(endpoint, 'PUT', userData);
 };
 
-// Event-related API calls
 export const getEvents = async (params?: Record<string, string>): Promise<ApiResponse<Events[]>> => {
     try {
         let url = '/events/';
@@ -52,18 +49,33 @@ export const getEvents = async (params?: Record<string, string>): Promise<ApiRes
 };
 
 export const createEvent = async (eventData: Partial<Events>): Promise<Events> => {
-    if (!eventData.startTime || !eventData.endTime) {
-        throw new Error('Start time and end time are required');
-    }
-
-    if (!eventData.sharedWith) {
-        eventData.sharedWith = [];
+    if (!eventData.start_time || !eventData.end_time || !eventData.start_date) {
+        throw new Error('Start time, end time, and start date are required');
     }
 
     try {
-        const response = await apiRequest<Events>('/events/', 'POST', eventData);
+        const payload = {
+            ...eventData,
+            recurrence_rule: eventData.recurring && eventData.recurrence_rule
+                ? {
+                    ...eventData.recurrence_rule,
+                    days_of_week: Array.isArray(eventData.recurrence_rule.days_of_week)
+                        ? eventData.recurrence_rule.days_of_week.join(',')
+                        : eventData.recurrence_rule.days_of_week,
+                }
+                : undefined,
+        };
+
+        if (!payload.recurring) {
+            delete payload.recurrence_rule;
+        }
+
+        console.log("Payload being sent to the server:", payload);  // Add this line for debugging
+
+        const response = await apiRequest<Events>('/events/', 'POST', payload);
         return response.data;
     } catch (error) {
+        console.error("Error in createEvent:", error);  // Add this line for debugging
         throw new Error(handleApiError(error));
     }
 };
@@ -118,7 +130,6 @@ export const deleteEvent = async (eventId: number): Promise<void> => {
     }
 };
 
-// Group-related API calls
 export const getGroups = async (params?: Record<string, string>) => {
     try {
         return await getPaginatedResults<Group>('/groups/', params);
@@ -205,7 +216,6 @@ export const deleteGroup = async (groupId: number): Promise<void> => {
     }
 };
 
-// Availability-related API calls
 export const getAvailabilities = async (params?: Record<string, string>) => {
     try {
         return await getPaginatedResults<Availability>('/availabilities/', params);
@@ -223,7 +233,6 @@ export const createAvailability = async (availabilityData: Partial<Availability>
     }
 };
 
-// Work Schedule-related API calls
 export const getWorkSchedules = async (params?: Record<string, string>) => {
     try {
         return await getPaginatedResults<WorkSchedule>('/work-schedules/', params);
@@ -250,7 +259,6 @@ export const updateWorkSchedule = async (scheduleId: number, scheduleData: Parti
     }
 };
 
-// Invitation-related API calls
 export const getInvitations = async (params?: Record<string, string>) => {
     try {
         return await getPaginatedResults<Invitation>('/invitations/', params);
@@ -268,7 +276,6 @@ export const createInvitation = async (invitationData: Partial<Invitation>): Pro
     }
 };
 
-// Notification-related API calls
 export const getNotifications = async (params?: Record<string, string>) => {
     try {
         return await getPaginatedResults<Notification>('/notifications/', params);
@@ -277,7 +284,6 @@ export const getNotifications = async (params?: Record<string, string>) => {
     }
 };
 
-// Tag-related API calls
 export const getTags = async (params?: Record<string, string>) => {
     try {
         return await getPaginatedResults<Tag>('/tags/', params);
@@ -286,7 +292,6 @@ export const getTags = async (params?: Record<string, string>) => {
     }
 };
 
-// Attachment-related API calls
 export const createAttachment = async (attachmentData: FormData): Promise<Attachment> => {
     try {
         const response = await apiRequest<Attachment>('/attachments/', 'POST', attachmentData, {
@@ -298,7 +303,6 @@ export const createAttachment = async (attachmentData: FormData): Promise<Attach
     }
 };
 
-// User Device Token-related API calls
 export const registerDeviceToken = async (tokenData: Partial<UserDeviceToken>): Promise<UserDeviceToken> => {
     try {
         const response = await apiRequest<UserDeviceToken>('/device-tokens/', 'POST', tokenData);
@@ -309,7 +313,6 @@ export const registerDeviceToken = async (tokenData: Partial<UserDeviceToken>): 
 };
 
 export async function changePassword(oldPassword: string, newPassword: string): Promise<void> {
-    // Mock API call or replace with actual API logic
     return new Promise((resolve, reject) => {
         setTimeout(() => {
             if (oldPassword === 'oldpassword') {
@@ -322,7 +325,6 @@ export async function changePassword(oldPassword: string, newPassword: string): 
 }
 
 export async function deleteAccount(): Promise<void> {
-    // Mock API call or replace with actual API logic
     return new Promise((resolve) => {
         setTimeout(() => resolve(), 1000);
     });

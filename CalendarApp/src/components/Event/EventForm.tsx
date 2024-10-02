@@ -18,6 +18,7 @@ import {
     useMediaQuery,
     IconButton,
     Typography,
+    ListItemText,
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -52,7 +53,7 @@ const EVENT_COLORS = [
     { name: 'Grey', value: '#9E9E9E' },
 ];
 
-const EVENT_TYPES: EventType[] = ['meeting', 'appointment', 'social', 'other'];
+const EVENT_TYPES: EventType[] = ['meeting', 'appointment', 'social', 'work', 'other'];
 const REMINDER_TYPES = ['email', 'push', 'in_app'];
 
 interface EventFormProps {
@@ -66,6 +67,7 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
     const { data: groups, isLoading, error } = useApi<Group[]>(getGroups);
+    const [selectedDays, setSelectedDays] = useState<string[]>([]);
 
     useEffect(() => {
         console.log("User: ", user)
@@ -76,8 +78,9 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
         description: '',
         eventType: 'other',
         location: '',
-        startTime: new Date().toISOString(),
-        endTime: new Date().toISOString(),
+        start_time: new Date().toISOString(),
+        end_time: new Date().toISOString(),
+        start_date: format(new Date(), 'yyyy-MM-dd'),
         isAllDay: false,
         recurring: false,
         color: EVENT_COLORS[0].value,
@@ -85,7 +88,7 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
         reminders: [],
     });
 
-    const [recurringFrequency, setRecurringFrequency] = useState<RecurrenceRule['frequency']>('weekly');
+    const [recurringFrequency, setRecurringFrequency] = useState<RecurrenceRule['frequency']>('WEEKLY');
     const [recurringInterval, setRecurringInterval] = useState<number>(1);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -93,26 +96,17 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
 
         if (!user) return;
 
-        const startTime = new Date(eventData.startTime);
-        const endTime = new Date(eventData.endTime);
-
-        if (endTime <= startTime) {
-            console.error('End time must be after start time');
-            return;
-        }
-
         try {
-            const formattedStartTime = format(startTime, "yyyy-MM-dd'T'HH:mm:ss");
-            const formattedEndTime = format(endTime, "yyyy-MM-dd'T'HH:mm:ss");
-
-            const finalEventData: Events = {
+            const finalEventData: Partial<Events> = {
                 ...eventData,
                 created_by: user.id,
-                startTime: formattedStartTime,
-                endTime: formattedEndTime,
                 recurring: eventData.recurring,
-                recurrenceRule: eventData.recurring
-                    ? { frequency: recurringFrequency, interval: recurringInterval }
+                recurrence_rule: eventData.recurring
+                    ? {
+                        frequency: recurringFrequency,
+                        interval: recurringInterval,
+                        days_of_week: recurringFrequency === 'WEEKLY' ? selectedDays : undefined,
+                    }
                     : undefined,
             };
 
@@ -129,9 +123,13 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
         setEventData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleDateChange = (name: 'startTime' | 'endTime') => (date: Date | null) => {
+    const handleDateChange = (name: 'start_time' | 'end_time') => (date: Date | null) => {
         if (date) {
-            setEventData(prev => ({ ...prev, [name]: date.toISOString() }));
+            setEventData(prev => ({
+                ...prev,
+                [name]: date.toISOString(),
+                start_date: name === 'start_time' ? format(date, 'yyyy-MM-dd') : prev.start_date,
+            }));
         }
     };
 
@@ -169,6 +167,10 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
                 i === index ? { ...reminder, [field]: value } : reminder
             ),
         }));
+    };
+
+    const handleDaysChange = (event: SelectChangeEvent<string[]>) => {
+        setSelectedDays(event.target.value as string[]);
     };
 
     return (
@@ -227,13 +229,13 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
                         />
                         <DateTimePicker
                             label="Start Time"
-                            value={new Date(eventData.startTime)}
-                            onChange={handleDateChange('startTime')}
+                            value={new Date(eventData.start_time)}
+                            onChange={handleDateChange('start_time')}
                         />
                         <DateTimePicker
                             label="End Time"
-                            value={new Date(eventData.endTime)}
-                            onChange={handleDateChange('endTime')}
+                            value={new Date(eventData.end_time)}
+                            onChange={handleDateChange('end_time')}
                         />
                         <FormControlLabel
                             control={
@@ -264,10 +266,10 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
                                         onChange={(e) => setRecurringFrequency(e.target.value as RecurrenceRule['frequency'])}
                                         label="Recurring Frequency"
                                     >
-                                        <MenuItem value="daily">Daily</MenuItem>
-                                        <MenuItem value="weekly">Weekly</MenuItem>
-                                        <MenuItem value="monthly">Monthly</MenuItem>
-                                        <MenuItem value="yearly">Yearly</MenuItem>
+                                        <MenuItem value="DAILY">Daily</MenuItem>
+                                        <MenuItem value="WEEKLY">Weekly</MenuItem>
+                                        <MenuItem value="MONTHLY">Monthly</MenuItem>
+                                        <MenuItem value="YEARLY">Yearly</MenuItem>
                                     </Select>
                                 </FormControl>
                                 <TextField
@@ -279,6 +281,24 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
                                     inputProps={{ min: 1 }}
                                     margin="normal"
                                 />
+                                {recurringFrequency === 'WEEKLY' && (
+                                    <FormControl fullWidth margin="normal">
+                                        <InputLabel>Days of Week</InputLabel>
+                                        <Select
+                                            multiple
+                                            value={selectedDays}
+                                            onChange={(e) => setSelectedDays(e.target.value as string[])}
+                                            renderValue={(selected) => (selected as string[]).join(', ')}
+                                        >
+                                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
+                                                <MenuItem key={day} value={day}>
+                                                    <Checkbox checked={selectedDays.indexOf(day) > -1} />
+                                                    <ListItemText primary={day} />
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                )}
                             </Box>
                         )}
                         <FormControl fullWidth margin="normal">
