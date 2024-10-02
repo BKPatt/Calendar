@@ -116,7 +116,6 @@ class RecurringScheduleSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Start time and end time are required.")
         return data
 
-
     def validate(self, data):
         """
         Custom validation to ensure that certain fields are correctly set based on the frequency.
@@ -175,6 +174,12 @@ class EventSerializer(serializers.ModelSerializer):
         for reminder_data in reminders_data:
             EventReminder.objects.create(event=event, **reminder_data)
         return event
+    
+    def validate(self, data):
+        if 'start_time' in data and 'end_time' in data:
+            if data['start_time'] >= data['end_time']:
+                raise serializers.ValidationError("End time must be after start time")
+        return data
 
 class AvailabilitySerializer(serializers.ModelSerializer):
     class Meta:

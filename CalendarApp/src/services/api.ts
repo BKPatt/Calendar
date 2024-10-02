@@ -2,6 +2,7 @@ import { ApiResponse, Attachment, Availability, Events, Invitation, Tag, UserDev
 import { Group } from '../types/group';
 import { User, UserProfile } from '../types/user';
 import { apiRequest, getPaginatedResults, handleApiError } from '../utils/apiHelpers';
+import { getCurrentUser } from './auth';
 
 // User-related API calls
 export async function getUserProfile(userId: number): Promise<ApiResponse<UserProfile>> {
@@ -152,7 +153,9 @@ export const getGroupEvents = async (groupId: number): Promise<ApiResponse<Event
 
 export const getUpcomingEvents = async (): Promise<ApiResponse<Events[]>> => {
     try {
-        const response = await apiRequest<Events[]>('/events/upcoming', 'GET');
+        const user = await getCurrentUser();
+        const response = await apiRequest<Events[]>(`/events/upcoming/?user_id=${user.id}`, 'GET');
+        console.log(response)
         return {
             data: response.data,
             message: 'Upcoming events fetched successfully',

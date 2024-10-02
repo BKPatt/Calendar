@@ -29,7 +29,7 @@ class EventViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """Customize permissions based on the action."""
         if self.action == 'list':
-            return [permissions.AllowAny()]  # Anyone can list events
+            return [permissions.AllowAny()]
         elif self.action in ['update', 'destroy']:
             return [permissions.IsAuthenticated(), IsEventOwnerOrShared()]
         return super().get_permissions()
@@ -48,20 +48,17 @@ class EventViewSet(viewsets.ModelViewSet):
             data = request.data.copy()
             data['created_by'] = request.user.id
 
-            # Check if start_time and end_time are present
             if 'startTime' not in data or 'endTime' not in data:
                 return Response(
                     {'error': 'Start time and end time are required.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Convert camelCase to snake_case for Django model
             data['start_time'] = data.pop('startTime')
             data['end_time'] = data.pop('endTime')
             data['event_type'] = data.pop('eventType', 'other')
             data['is_all_day'] = data.pop('isAllDay', False)
 
-            # Handle recurring events
             if data.get('recurring'):
                 recurrence_rule = data.pop('recurrenceRule', {})
                 recurring_schedule = RecurringSchedule.objects.create(
@@ -76,11 +73,8 @@ class EventViewSet(viewsets.ModelViewSet):
                 )
                 data['recurring_schedule'] = recurring_schedule.id
 
-            # Serialize the event data
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
-
-            # Save the event
             event = serializer.save()
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -161,22 +155,26 @@ class EventViewSet(viewsets.ModelViewSet):
     def upcoming(self, request):
         """Get upcoming events within the next 30 days."""
         try:
-            now = timezone.now()
-            end_date = now + timezone.timedelta(days=30)
-            upcoming_events = Event.objects.filter(
-                start_time__gte=now,
-                start_time__lte=end_date,
-                group__isnull=False,
-                is_archived=False
-            ).order_by('start_time')
+            user_id = request.query_params.get('user_id')
+            if not user_id:
+                return Response({'error': 'User ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            page = self.paginate_queryset(upcoming_events)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                return self.get_paginated_response(serializer.data)
+            upcoming_events = Event.objects.all().order_by('start_time')
 
             serializer = self.get_serializer(upcoming_events, many=True)
-            return Response(serializer.data)
+            serialized_data = serializer.data
+
+            camelized_data = []
+            for event_data in serialized_data:
+                camelized_event = {}
+                for key, value in event_data.items():
+                    components = key.split('_')
+                    camelized_key = components[0] + ''.join(x.capitalize() for x in components[1:])
+                    camelized_event[camelized_key] = value
+                camelized_data.append(camelized_event)
+
+            return Response({"data": camelized_data})
+
         except Exception as e:
             logger.error(f"Error fetching upcoming events: {str(e)}")
             return Response(

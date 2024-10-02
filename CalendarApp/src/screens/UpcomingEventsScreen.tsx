@@ -42,6 +42,8 @@ const UpcomingEventsScreen: React.FC = () => {
     const [filteredEvents, setFilteredEvents] = useState<Events[]>([]);
 
     useEffect(() => {
+        console.log("Events: ", events)
+
         if (events) {
             let filtered = events;
 

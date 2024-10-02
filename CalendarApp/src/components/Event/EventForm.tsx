@@ -102,8 +102,8 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
         }
 
         try {
-            const formattedStartTime = format(startTime, 'yyyy-MM-dd\'T\'HH:mm:ss');
-            const formattedEndTime = format(endTime, 'yyyy-MM-dd\'T\'HH:mm:ss');
+            const formattedStartTime = format(startTime, "yyyy-MM-dd'T'HH:mm:ss");
+            const formattedEndTime = format(endTime, "yyyy-MM-dd'T'HH:mm:ss");
 
             const finalEventData: Events = {
                 ...eventData,

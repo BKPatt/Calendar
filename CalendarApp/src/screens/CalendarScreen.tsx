@@ -3,9 +3,7 @@ import {
     Container,
     Typography,
     Box,
-    Button,
     Dialog,
-    DialogActions,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
@@ -66,7 +64,7 @@ const CalendarScreen: React.FC = () => {
                 {/* Calendar component */}
                 <Calendar
                     currentMonth={currentMonth}
-                    events={events}
+                    events={events || []}
                     onDateClick={setSelectedDate}
                     onEventClick={handleEventClick}
                     changeMonth={changeMonth}

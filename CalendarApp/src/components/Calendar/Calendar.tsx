@@ -172,19 +172,18 @@ const Calendar: React.FC<CalendarProps> = ({
             <Grid2 container spacing={1}>
                 {calendarDays.map(({ date, events }) => (
                     <Grid2 key={date.toISOString()} size={12 / 7}>
-                        <CardActionArea>
+                        <CardActionArea onClick={() => onDateClick(date)}>
                             <DayCell
                                 isToday={isToday(date)}
                                 isSelected={isSameDay(date, new Date())}
                                 isCurrentMonth={isSameMonth(date, currentMonth)}
-                                onClick={() => onDateClick(date)}
                             >
                                 <DayNumber variant="body2" isToday={isToday(date)}>
                                     {format(date, 'd')}
                                 </DayNumber>
                                 {events.slice(0, 3).map((event, index) => (
                                     <Tooltip key={index} title={event.title} arrow>
-                                        <Box display="flex" alignItems="center" mt={0.5}>
+                                        <Box display="flex" alignItems="center" mt={0.5} onClick={() => onEventClick(event.id!)}>
                                             <EventDot />
                                             {!isMobile && (
                                                 <Typography variant="caption" noWrap>
