@@ -29,8 +29,18 @@ const EventDetails: React.FC = () => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
 
     const { data, isLoading, error, refetch } = useApi<ApiResponse<Events>>(() => getEvent(Number(eventId)));
+
+    const handleCreateEvent = () => {
+        setIsCreateEventOpen(true);
+    };
+
+    const handleEventCreated = () => {
+        setIsCreateEventOpen(false);
+        // Refresh events list or handle post-event creation logic here
+    };
 
     useEffect(() => {
         if (data) {
@@ -104,15 +114,15 @@ const EventDetails: React.FC = () => {
             {event.group && (
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <Group sx={{ mr: 1 }} />
-                    <Typography>{event.group.name}</Typography>
+                    <Typography>{event.group?.toString()}</Typography> {/* Update to fit your group handling */}
                 </Box>
             )}
             <Typography variant="subtitle1" gutterBottom>
                 Shared with:
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                {event.sharedWith.map((user: User) => (
-                    <Chip key={user.id} label={`${user.firstName} ${user.lastName}`} />
+                {event.sharedWith.map((userId: number) => (
+                    <Chip key={userId} label={`User ID: ${userId}`} />
                 ))}
             </Box>
             <Box sx={{ mt: 2 }}>
@@ -126,9 +136,9 @@ const EventDetails: React.FC = () => {
 
             {isEditing && (
                 <EventForm
-                    event={event}
-                    onSubmit={handleEventUpdate}
-                    onCancel={() => setIsEditing(false)}
+                    open={isCreateEventOpen}
+                    onClose={() => setIsCreateEventOpen(false)}
+                    onEventCreated={handleEventCreated}
                 />
             )}
 

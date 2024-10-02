@@ -51,6 +51,14 @@ export const getEvents = async (params?: Record<string, string>): Promise<ApiRes
 };
 
 export const createEvent = async (eventData: Partial<Events>): Promise<Events> => {
+    if (!eventData.startTime || !eventData.endTime) {
+        throw new Error('Start time and end time are required');
+    }
+
+    if (!eventData.sharedWith) {
+        eventData.sharedWith = [];
+    }
+
     try {
         const response = await apiRequest<Events>('/events/', 'POST', eventData);
         return response.data;

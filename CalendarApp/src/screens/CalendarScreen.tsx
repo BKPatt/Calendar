@@ -3,25 +3,17 @@ import {
     Container,
     Typography,
     Box,
-    IconButton,
     Button,
     Dialog,
-    DialogTitle,
-    DialogContent,
     DialogActions,
 } from '@mui/material';
-import {
-    ChevronLeft,
-    ChevronRight,
-    Add as AddIcon,
-} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { getEvents } from '../services/api';
 import { Events } from '../types/event';
-import EventForm from '../components/Event/EventForm';
 import { addMonths, endOfMonth, format, startOfMonth, subMonths } from 'date-fns';
 import Calendar from '../components/Calendar/Calendar';
+import EventForm from '../components/Event/EventForm';
 
 const CalendarScreen: React.FC = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -84,20 +76,11 @@ const CalendarScreen: React.FC = () => {
 
                 {/* Dialog for creating a new event */}
                 <Dialog open={isEventFormOpen} onClose={handleEventFormClose} maxWidth="md" fullWidth>
-                    <DialogTitle>Create New Event</DialogTitle>
-                    <DialogContent>
-                        <EventForm
-                            onSubmit={() => {
-                                handleEventFormClose();
-                                refetch();
-                            }}
-                            onCancel={handleEventFormClose}
-                            initialDate={selectedDate || new Date()}
-                        />
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={handleEventFormClose}>Cancel</Button>
-                    </DialogActions>
+                    <EventForm
+                        open={isEventFormOpen}
+                        onClose={handleEventFormClose}
+                        onEventCreated={refetch}
+                    />
                 </Dialog>
             </Box>
         </Container>

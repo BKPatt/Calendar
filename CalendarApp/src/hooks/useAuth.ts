@@ -60,6 +60,13 @@ export function useAuth(): UseAuthReturn {
         }
     };
 
+    // Add a useEffect to trigger refresh if user is null but token exists
+    useEffect(() => {
+        if (!user && localStorage.getItem('refresh_token')) {
+            checkAuthStatus();
+        }
+    }, [user, checkAuthStatus]);
+
     const login = async (username: string, password: string) => {
         setIsLoading(true);
         try {

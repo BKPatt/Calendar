@@ -4,25 +4,29 @@ import { User } from "./user";
 export type EventType = 'meeting' | 'appointment' | 'social' | 'other';
 
 export interface Events {
-    id: number;
+    id?: number;
     title: string;
     description?: string;
     eventType: EventType;
     location?: string;
     startTime: string;
     endTime: string;
-    createdBy: User;
-    group?: Group;
+    created_by?: number;
+    group?: number;
     recurring: boolean;
     recurrenceRule?: RecurrenceRule;
-    sharedWith: User[];
+    sharedWith: number[];
     eta?: string;
     isAllDay: boolean;
     reminder?: string;
     color: string;
-    attachments: Attachment[];
-    createdAt: string;
-    updatedAt: string;
+    attachments?: Attachment[];
+    createdAt?: string;
+    updatedAt?: string;
+    reminders: Array<{
+        reminder_time: string;
+        reminder_type: 'email' | 'push' | 'in_app';
+    }>;
 }
 
 export interface RecurrenceRule {

@@ -49,6 +49,7 @@ const EventScreen: React.FC = () => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [isSharing, setIsSharing] = useState(false);
     const [shareEmail, setShareEmail] = useState('');
+    const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
 
     const { data: eventResponse, isLoading, error, refetch } = useApi<ApiResponse<Events>>(() => getEvent(Number(eventId)));
 
@@ -65,6 +66,14 @@ const EventScreen: React.FC = () => {
     const handleShare = useCallback(() => {
         setIsSharing(true);
     }, []);
+
+    const handleCreateEvent = () => {
+        setIsCreateEventOpen(true);
+    };
+
+    const handleEventCreated = () => {
+        setIsCreateEventOpen(false);
+    };
 
     const getInitials = (user: User) => {
         return `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}` || user.username[0];
@@ -85,7 +94,7 @@ const EventScreen: React.FC = () => {
     const handleConfirmDelete = useCallback(async () => {
         if (event) {
             try {
-                await deleteEvent(event.id);
+                await deleteEvent(event.id!);
                 navigate('/calendar');
             } catch (error) {
                 console.error('Error deleting event:', error);
@@ -97,7 +106,7 @@ const EventScreen: React.FC = () => {
     const handleConfirmShare = useCallback(async () => {
         if (event) {
             try {
-                await shareEvent(event.id, shareEmail);
+                await shareEvent(event.id!, shareEmail);
                 refetch();
             } catch (error) {
                 console.error('Error sharing event:', error);
@@ -110,7 +119,7 @@ const EventScreen: React.FC = () => {
     const handleEventUpdate = useCallback(async (updatedEvent: Partial<Events>) => {
         if (event) {
             try {
-                await updateEvent(event.id, updatedEvent);
+                await updateEvent(event.id!, updatedEvent);
                 refetch();
                 setIsEditing(false);
             } catch (error) {
@@ -123,7 +132,7 @@ const EventScreen: React.FC = () => {
     if (error) return <Typography color="error">Error: {error}</Typography>;
     if (!event) return <Typography>Event not found</Typography>;
 
-    const isOwner = user && event.createdBy.id === user.id;
+    const isOwner = user && event.created_by === user.id;
 
     return (
         <Container maxWidth="md">
@@ -174,7 +183,7 @@ const EventScreen: React.FC = () => {
                         {event.group && (
                             <Box display="flex" alignItems="center" mb={1}>
                                 <GroupIcon sx={{ mr: 1 }} color="action" />
-                                <Typography>{event.group.name}</Typography>
+                                <Typography>{event.group}</Typography>
                             </Box>
                         )}
                     </Grid2>
@@ -191,16 +200,15 @@ const EventScreen: React.FC = () => {
                 <Box mt={3}>
                     <Typography variant="h6" gutterBottom>Shared with</Typography>
                     <List>
-                        {event.sharedWith.map((user: User) => (
-                            <ListItem key={user.id}>
+                        {event.sharedWith.map((userId: number) => (
+                            <ListItem key={userId}>
                                 <ListItemAvatar>
                                     <Avatar>
-                                        {getInitials(user)}
+                                        {userId}
                                     </Avatar>
                                 </ListItemAvatar>
                                 <ListItemText
-                                    primary={`${user.firstName} ${user.lastName}`}
-                                    secondary={user.email}
+                                    primary={`User ID: ${userId}`}
                                 />
                             </ListItem>
                         ))}
@@ -218,9 +226,9 @@ const EventScreen: React.FC = () => {
                 <DialogTitle>Edit Event</DialogTitle>
                 <DialogContent>
                     <EventForm
-                        event={event}
-                        onSubmit={handleEventUpdate}
-                        onCancel={() => setIsEditing(false)}
+                        open={isCreateEventOpen}
+                        onClose={() => setIsCreateEventOpen(false)}
+                        onEventCreated={handleEventCreated}
                     />
                 </DialogContent>
             </Dialog>

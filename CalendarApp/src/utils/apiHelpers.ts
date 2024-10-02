@@ -20,7 +20,6 @@ export const apiRequest = async <T>(
     let accessToken = localStorage.getItem('access_token');
     const refreshToken = localStorage.getItem('refresh_token');
 
-    // Define the headers
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
@@ -40,15 +39,12 @@ export const apiRequest = async <T>(
         try {
             const newAccessToken = await refreshAccessToken(refreshToken);
             if (newAccessToken) {
-                // Retry the request with the new access token
                 accessToken = newAccessToken;
                 headers.Authorization = `Bearer ${newAccessToken}`;
 
-                // Retry the request with updated Authorization header
-                response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                    ...config,
-                    headers,
-                });
+                config.headers = { ...headers };
+
+                response = await fetch(`${API_BASE_URL}${endpoint}`, config);
             } else {
                 throw new Error('Token refresh failed');
             }
@@ -81,7 +77,6 @@ const refreshAccessToken = async (refreshToken: string): Promise<string | null> 
             throw new Error('Token refresh failed');
         }
     } catch (error) {
-        console.error('Error refreshing access token:', error);
         return null;
     }
 };
@@ -100,7 +95,6 @@ export const getPaginatedResults = async <T>(
     const fullEndpoint = `${endpoint}?${queryString}`;
     const response = await apiRequest<PaginatedResponse<T[]>>(fullEndpoint);
 
-    // Check if the response has the expected structure
     if (response && typeof response === 'object' && 'data' in response) {
         const paginatedData = response.data;
         if ('count' in paginatedData && 'results' in paginatedData) {
@@ -108,7 +102,6 @@ export const getPaginatedResults = async <T>(
         }
     }
 
-    // If the response doesn't match the expected structure, throw an error
     throw new Error('Invalid paginated response structure');
 };
 

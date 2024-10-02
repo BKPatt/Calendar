@@ -72,16 +72,50 @@ class EventReminderSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 class RecurringScheduleSerializer(serializers.ModelSerializer):
-    user = serializers.ReadOnlyField(source='user.username')
 
     class Meta:
         model = RecurringSchedule
         fields = [
-            'id', 'user', 'title', 'description', 'location', 'start_time', 'end_time',
-            'frequency', 'interval', 'start_date', 'end_date', 'days_of_week',
-            'day_of_month', 'month_of_year', 'color', 'created_at', 'updated_at', 'is_active'
+            'id', 'title', 'description', 'location', 'startTime', 'endTime', 
+            'frequency', 'interval', 'startDate', 'endDate', 'days_of_week',
+            'day_of_month', 'month_of_year', 'color', 'created_at', 'updated_at', 'isActive'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def to_internal_value(self, data):
+        """
+        Convert camelCase fields to snake_case before passing data to the model.
+        """
+        data = {
+            'start_time': data.get('startTime'),
+            'end_time': data.get('endTime'),
+            'start_date': data.get('startDate'),
+            'end_date': data.get('endDate'),
+            'is_active': data.get('isActive'),
+            **data
+        }
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        """
+        Convert snake_case fields to camelCase when sending data back to the frontend.
+        """
+        representation = super().to_representation(instance)
+        representation['startTime'] = representation.pop('start_time', None)
+        representation['endTime'] = representation.pop('end_time', None)
+        representation['startDate'] = representation.pop('start_date', None)
+        representation['endDate'] = representation.pop('end_date', None)
+        representation['isActive'] = representation.pop('is_active', None)
+        return representation
+
+    def validate(self, data):
+        """
+        Ensure start_time and end_time are valid.
+        """
+        if 'start_time' not in data or 'end_time' not in data:
+            raise serializers.ValidationError("Start time and end time are required.")
+        return data
+
 
     def validate(self, data):
         """
@@ -98,63 +132,49 @@ class RecurringScheduleSerializer(serializers.ModelSerializer):
         return data
 
 class EventSerializer(serializers.ModelSerializer):
-    created_by = serializers.ReadOnlyField(source='created_by.username')
     shared_with = serializers.SlugRelatedField(
-        many=True, slug_field='username', queryset=UserProfile.objects.all()
+        many=True,
+        slug_field='username',
+        queryset=CustomUser.objects.all(),
+        required=False
     )
+    created_by = serializers.ReadOnlyField(source='created_by.username')
     reminders = EventReminderSerializer(many=True, required=False)
-    recurring_schedule = RecurringScheduleSerializer(required=False)
 
     class Meta:
         model = Event
         fields = [
             'id', 'title', 'description', 'start_time', 'end_time', 'location', 'created_by',
             'shared_with', 'recurring', 'recurrence_rule', 'color', 'event_type', 'eta',
-            'created_at', 'updated_at', 'category', 'reminders', 'recurring_schedule'
+            'created_at', 'updated_at', 'category', 'reminders', 'recurring_schedule', 'is_all_day'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['startTime'] = representation.pop('start_time')
+        representation['endTime'] = representation.pop('end_time')
+        representation['createdBy'] = representation.pop('created_by')
+        representation['sharedWith'] = representation.pop('shared_with', [])
+        representation['isAllDay'] = representation.pop('is_all_day', False)
+        return representation
+
+    def to_internal_value(self, data):
+        if 'startTime' in data:
+            data['start_time'] = data.pop('startTime')
+        if 'endTime' in data:
+            data['end_time'] = data.pop('endTime')
+        if 'isAllDay' in data:
+            data['is_all_day'] = data.pop('isAllDay')
+        return super().to_internal_value(data)
 
     def create(self, validated_data):
         reminders_data = validated_data.pop('reminders', [])
-        recurring_schedule_data = validated_data.pop('recurring_schedule', None)
-        event = Event.objects.create(**validated_data)
-
-        if recurring_schedule_data:
-            recurring_schedule = RecurringSchedule.objects.create(**recurring_schedule_data, user=event.created_by)
-            event.recurring_schedule = recurring_schedule
-
+        request = self.context['request']
+        event = Event.objects.create(created_by=request.user, **validated_data)
         for reminder_data in reminders_data:
             EventReminder.objects.create(event=event, **reminder_data)
-
-        ETACalculator.calculate_and_update_eta(event)
-
-        event.save()
         return event
-
-    def update(self, instance, validated_data):
-        reminders_data = validated_data.pop('reminders', [])
-        recurring_schedule_data = validated_data.pop('recurring_schedule', None)
-
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
-        instance.reminders.all().delete()
-        for reminder_data in reminders_data:
-            EventReminder.objects.create(event=instance, **reminder_data)
-
-        if recurring_schedule_data:
-            if instance.recurring_schedule:
-                for attr, value in recurring_schedule_data.items():
-                    setattr(instance.recurring_schedule, attr, value)
-                instance.recurring_schedule.save()
-            else:
-                recurring_schedule = RecurringSchedule.objects.create(**recurring_schedule_data, user=instance.created_by)
-                instance.recurring_schedule = recurring_schedule
-
-        ETACalculator.calculate_and_update_eta(instance)
-
-        instance.save()
-        return instance
 
 class AvailabilitySerializer(serializers.ModelSerializer):
     class Meta:

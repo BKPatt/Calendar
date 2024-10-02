@@ -21,12 +21,12 @@ import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
 import { getUpcomingEvents, getGroups } from '../services/api';
 import { Events } from '../types/event';
-import EventCreateScreen from '../dialogs/EventCreateScreen';
 import { startOfMonth, addMonths } from 'date-fns';
 import Calendar from '../components/Calendar/Calendar';
 import UpcomingEventsWidget from '../components/Event/UpcomingEventsWidget';
 import GroupOverview from '../components/Group/GroupOverview';
 import WorkScheduleOverview from '../components/Event/WorkScheduleOverview';
+import EventForm from '../components/Event/EventForm';
 
 const HomeScreen: React.FC = () => {
     const theme = useTheme();
@@ -188,7 +188,7 @@ const HomeScreen: React.FC = () => {
                 maxWidth="sm"
             >
                 <DialogContent>
-                    <EventCreateScreen
+                    <EventForm
                         open={isEventCreateOpen}
                         onClose={handleCloseEventCreate}
                         onEventCreated={handleEventCreated}

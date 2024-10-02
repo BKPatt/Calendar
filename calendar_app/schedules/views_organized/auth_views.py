@@ -194,6 +194,7 @@ def verify_token(request):
 def current_user(request):
     serializer = UserSerializer(request.user)
     return Response({'data': serializer.data})
+
 class CustomTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
         try:

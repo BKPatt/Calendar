@@ -194,6 +194,7 @@ class Event(models.Model):
     recurring_schedule = models.ForeignKey(RecurringSchedule, on_delete=models.SET_NULL, null=True, blank=True, related_name='events')
     category = models.ForeignKey(EventCategory, on_delete=models.SET_NULL, null=True, blank=True)
     is_archived = models.BooleanField(default=False)
+    is_all_day = models.BooleanField(default=False)
 
     def update_eta(self, new_eta):
         if new_eta <= self.start_time:

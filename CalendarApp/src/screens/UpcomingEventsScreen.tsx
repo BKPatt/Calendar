@@ -145,7 +145,7 @@ const UpcomingEventsScreen: React.FC = () => {
                                         <IconButton
                                             edge="end"
                                             aria-label="view details"
-                                            onClick={() => handleEventClick(event.id)}
+                                            onClick={() => handleEventClick(event.id!)}
                                         >
                                             <InfoIcon />
                                         </IconButton>
@@ -180,7 +180,7 @@ const UpcomingEventsScreen: React.FC = () => {
                                                 {event.group && (
                                                     <Chip
                                                         size="small"
-                                                        label={event.group.name}
+                                                        label={event.group}
                                                         sx={{ mr: 1, mb: 1 }}
                                                     />
                                                 )}

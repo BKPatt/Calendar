@@ -34,6 +34,7 @@ const EventList: React.FC = () => {
     const [editingEvent, setEditingEvent] = useState<Events | null>(null);
 
     const { data, isLoading, error, refetch: fetchEvents } = useApi(getEvents);
+    const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
 
     useEffect(() => {
         fetchEvents();
@@ -44,6 +45,15 @@ const EventList: React.FC = () => {
             setEvents(data);
         }
     }, [data]);
+
+    const handleCreateEvent = () => {
+        setIsCreateEventOpen(true);
+    };
+
+    const handleEventCreated = () => {
+        setIsCreateEventOpen(false);
+        // Refresh events list or handle post-event creation logic here
+    };
 
     const handleEditEvent = (event: Events) => {
         setEditingEvent(event);
@@ -75,9 +85,9 @@ const EventList: React.FC = () => {
         <EventListContainer>
             {editingEvent ? (
                 <EventForm
-                    event={editingEvent}
-                    onSubmit={handleEventSubmit}
-                    onCancel={handleEventCancel}
+                    open={isCreateEventOpen}
+                    onClose={() => setIsCreateEventOpen(false)}
+                    onEventCreated={handleEventCreated}
                 />
             ) : (
                 <>
@@ -109,7 +119,7 @@ const EventList: React.FC = () => {
                                     <IconButton edge="end" aria-label="edit" onClick={() => handleEditEvent(event)}>
                                         <Edit />
                                     </IconButton>
-                                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteEvent(event.id)}>
+                                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteEvent(event.id!)}>
                                         <Delete />
                                     </IconButton>
                                 </ListItemSecondaryAction>
