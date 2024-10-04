@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     Box,
     Typography,
@@ -11,12 +11,16 @@ import {
     Tooltip,
     Card,
     CardActionArea,
+    Dialog,
+    DialogContent,
 } from '@mui/material';
 import {
     ChevronLeft,
     ChevronRight,
     Today as TodayIcon,
     Add as AddIcon,
+    Event as EventIcon,
+    Repeat as RepeatIcon,
 } from '@mui/icons-material';
 import { styled } from '@mui/system';
 import {
@@ -29,18 +33,16 @@ import {
     isSameDay,
     format,
     isToday,
+    isWithinInterval,
+    parseISO,
+    startOfDay,
+    endOfDay,
+    areIntervalsOverlapping,
 } from 'date-fns';
 import { Events } from '../../types/event';
-
-interface CalendarProps {
-    currentMonth: Date;
-    events: Events[] | null;
-    onDateClick: (date: Date) => void;
-    onEventClick: (eventId: number) => void;
-    changeMonth: (amount: number) => void;
-    goToToday: () => void;
-    handleCreateEvent: () => void;
-}
+import { useApi } from '../../hooks/useApi';
+import { getEvents } from '../../services/api';
+import EventForm from '../Event/EventForm';
 
 const CalendarContainer = styled(Paper)(({ theme }) => ({
     padding: theme.spacing(3),
@@ -101,13 +103,15 @@ const DayNumber = styled(Typography, {
     color: isToday ? theme.palette.secondary.main : theme.palette.text.primary,
 }));
 
-const EventDot = styled(Box)(({ theme }) => ({
-    width: 6,
-    height: 6,
-    borderRadius: '50%',
-    backgroundColor: theme.palette.secondary.main,
-    marginRight: 4,
-}));
+interface CalendarProps {
+    currentMonth: Date;
+    events: Events[] | null;
+    onDateClick: (date: Date) => void;
+    onEventClick: (eventId: number) => void;
+    changeMonth: (amount: number) => void;
+    goToToday: () => void;
+    handleCreateEvent: () => void;
+}
 
 const Calendar: React.FC<CalendarProps> = ({
     currentMonth,
@@ -120,6 +124,15 @@ const Calendar: React.FC<CalendarProps> = ({
 }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const [isEventFormOpen, setIsEventFormOpen] = useState(false);
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+    const { refetch } = useApi<Events[]>(() =>
+        getEvents({
+            start_date: format(startOfMonth(currentMonth), 'yyyy-MM-dd'),
+            end_date: format(endOfMonth(currentMonth), 'yyyy-MM-dd'),
+        })
+    );
 
     const calendarDays = useMemo(() => {
         const monthStart = startOfMonth(currentMonth);
@@ -128,12 +141,10 @@ const Calendar: React.FC<CalendarProps> = ({
         const endDate = endOfWeek(monthEnd);
 
         return eachDayOfInterval({ start: startDate, end: endDate }).map((day) => {
-            const dayEvents = events?.filter(
-                (event) =>
-                    new Date(event.start_time) <= day && new Date(event.end_time) >= day
-            ) || [];
-
-            console.log(dayEvents)
+            const dayEvents = events?.filter((event) => {
+                const eventStart = parseISO(event.start_time);
+                return isSameDay(day, eventStart);
+            }) || [];
 
             return {
                 date: day,
@@ -143,6 +154,20 @@ const Calendar: React.FC<CalendarProps> = ({
     }, [currentMonth, events]);
 
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    const handleDateClick = (date: Date) => {
+        setSelectedDate(date);
+        onDateClick(date);
+    };
+
+    const handleCloseEventForm = () => {
+        setIsEventFormOpen(false);
+    };
+
+    const handleEventCreated = () => {
+        refetch();
+        handleCloseEventForm();
+    };
 
     return (
         <CalendarContainer>
@@ -181,30 +206,44 @@ const Calendar: React.FC<CalendarProps> = ({
             <Grid2 container spacing={1}>
                 {calendarDays.map(({ date, events }) => (
                     <Grid2 key={date.toISOString()} size={12 / 7}>
-                        <CardActionArea onClick={() => onDateClick(date)}>
+                        <CardActionArea onClick={() => handleDateClick(date)}>
                             <DayCell
                                 isToday={isToday(date)}
-                                isSelected={isSameDay(date, new Date())}
+                                isSelected={selectedDate ? isSameDay(date, selectedDate) : false}
                                 isCurrentMonth={isSameMonth(date, currentMonth)}
                             >
                                 <DayNumber variant="body2" isToday={isToday(date)}>
                                     {format(date, 'd')}
                                 </DayNumber>
-                                {events.slice(0, 3).map((event, index) => (
-                                    <Tooltip key={index} title={event.title} arrow>
-                                        <Box display="flex" alignItems="center" mt={0.5} onClick={() => onEventClick(event.id!)}>
-                                            <EventDot />
-                                            {!isMobile && (
-                                                <Typography variant="caption" noWrap>
-                                                    {event.title}
-                                                    {new Date(event.start_time).getDate() === new Date(event.end_time).getDate() && (
-                                                        <> ({format(new Date(event.start_time), 'h:mm a')})</>
-                                                    )}
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                    </Tooltip>
-                                ))}
+                                {events.length > 0 ? (
+                                    events.slice(0, 3).map((event, index) => (
+                                        <Tooltip key={index} title={event.title} arrow>
+                                            <Box
+                                                display="flex"
+                                                alignItems="center"
+                                                mt={0.5}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onEventClick(event.id!);
+                                                }}
+                                            >
+                                                {event.recurring ? (
+                                                    <RepeatIcon style={{ color: event.color, marginRight: 4, fontSize: 16 }} />
+                                                ) : (
+                                                    <EventIcon style={{ color: event.color, marginRight: 4, fontSize: 16 }} />
+                                                )}
+                                                {!isMobile && (
+                                                    <Typography variant="caption" noWrap>
+                                                        {event.title}
+                                                    </Typography>
+                                                )}
+                                            </Box>
+                                        </Tooltip>
+                                    ))
+                                ) : (
+                                    <Typography variant="caption" color="text.secondary">
+                                    </Typography>
+                                )}
                                 {events.length > 3 && (
                                     <Typography variant="caption" color="text.secondary">
                                         +{events.length - 3} more
@@ -215,6 +254,16 @@ const Calendar: React.FC<CalendarProps> = ({
                     </Grid2>
                 ))}
             </Grid2>
+
+            <Dialog open={isEventFormOpen} onClose={handleCloseEventForm} fullWidth maxWidth="sm">
+                <DialogContent>
+                    <EventForm
+                        onClose={handleCloseEventForm}
+                        onEventCreated={handleEventCreated}
+                        open={false}
+                    />
+                </DialogContent>
+            </Dialog>
         </CalendarContainer>
     );
 };

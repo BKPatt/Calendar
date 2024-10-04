@@ -145,7 +145,8 @@ class EventSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'description', 'start_time', 'end_time', 'location', 'created_by',
             'shared_with', 'recurring', 'recurrence_rule', 'color', 'event_type', 'eta',
-            'created_at', 'updated_at', 'category', 'reminders', 'recurring_schedule', 'is_all_day'
+            'created_at', 'updated_at', 'category', 'reminders', 'recurring_schedule', 'is_all_day',
+            'is_recurring', 'recurrence_rule', 'recurrence_end_date'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
 

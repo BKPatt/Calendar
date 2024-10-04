@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from rest_framework.permissions import IsAuthenticated
+from django.utils.functional import Promise
 
 from ..models import UserDeviceToken, UserProfile, CustomUser, Event
 from ..serializers import EventSerializer, UserDeviceTokenSerializer, UserProfileSerializer, UserSerializer
@@ -74,11 +75,20 @@ class UserStatsView(APIView):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def get_user_profile(request, user_id):
-    """
-    API view to fetch a user's profile by user ID.
-    """
     user = get_object_or_404(CustomUser, id=user_id)
-    serializer = UserProfileSerializer(user.profile)
+    
+    try:
+        user_profile = user.userprofile
+    except UserProfile.DoesNotExist:
+        return Response({'error': 'User profile not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    serializer = UserProfileSerializer(user_profile)
+
+    # Ensure any translation proxy objects are converted to strings
+    for field in serializer.data:
+        if isinstance(serializer.data[field], Promise):
+            serializer.data[field] = str(serializer.data[field])
+    
     return Response({
         'data': serializer.data,
         'message': 'User profile fetched successfully'

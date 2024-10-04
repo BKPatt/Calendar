@@ -14,7 +14,6 @@ export interface Events {
     start_date: string;
     created_by?: number;
     group?: number;
-    recurring: boolean;
     recurrence_rule?: RecurrenceRule;
     sharedWith: number[];
     eta?: string;
@@ -27,6 +26,8 @@ export interface Events {
         reminder_time: string;
         reminder_type: 'email' | 'push' | 'in_app';
     }>;
+    recurring: boolean;
+    recurrenceEndDate?: string;
 }
 
 export interface RecurrenceRule {

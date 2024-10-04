@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
-import { CssBaseline, Drawer, List, ListItemText, IconButton, AppBar, Toolbar, Typography, ListItemButton } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
+import { CssBaseline, Drawer, List, ListItemText, ListItemButton } from '@mui/material';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import theme from './theme';
 
@@ -16,6 +15,7 @@ import EventScreen from './screens/EventScreen';
 import UpcomingEventsScreen from './screens/UpcomingEventsScreen';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import PublicRoute from './auth/PublicRoute';
+import AppHeader from './AppContext';
 
 const drawerWidth = 240;
 
@@ -40,25 +40,19 @@ const App: React.FC = () => {
       <AuthProvider>
         <Router>
           <div style={{ display: 'flex', position: 'relative' }}>
-            <AppBar position="fixed" style={{ zIndex: 1301 }}>
-              <Toolbar>
-                <IconButton edge="start" color="inherit" aria-label="menu" onClick={toggleDrawer}>
-                  <MenuIcon />
-                </IconButton>
-                <Typography variant="h6" noWrap>
-                  SincIt
-                </Typography>
-              </Toolbar>
-            </AppBar>
+            <AppHeader onMenuClick={toggleDrawer} />
 
             <Drawer
-              variant="persistent"
+              variant="temporary"
               anchor="left"
               open={isDrawerOpen}
+              onClose={toggleDrawer}
               sx={{
                 width: drawerWidth,
-                flexShrink: 0,
-                '& .MuiDrawer-paper': { width: drawerWidth, top: '64px', position: 'absolute' },
+                '& .MuiDrawer-paper': {
+                  width: drawerWidth,
+                  top: '64px',
+                },
               }}
             >
               <List>

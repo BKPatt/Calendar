@@ -4,12 +4,13 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
+from matplotlib.dates import rrule
 
 class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
 
 class UserProfile(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='userprofile')
     bio = models.TextField(blank=True)
     profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
     phone_number = models.CharField(max_length=15, blank=True)
@@ -192,6 +193,9 @@ class Event(models.Model):
     category = models.ForeignKey(EventCategory, on_delete=models.SET_NULL, null=True, blank=True)
     is_archived = models.BooleanField(default=False)
     is_all_day = models.BooleanField(default=False)
+    is_recurring = models.BooleanField(default=False)
+    recurrence_rule = models.JSONField(null=True, blank=True)
+    recurrence_end_date = models.DateTimeField(null=True, blank=True)
 
     def update_eta(self, new_eta):
         if new_eta <= self.start_time:
@@ -206,6 +210,34 @@ class Event(models.Model):
                 )
         else:
             raise ValidationError("ETA cannot be after the event start time.")
+
+    def generate_recurring_events(self, end_date):
+        if not self.is_recurring or not self.recurrence_rule:
+            return []
+
+        events = []
+        current_date = self.start_time
+        rule = rrule.rrulestr(self.recurrence_rule)
+
+        while current_date <= end_date:
+            if self.recurrence_end_date and current_date > self.recurrence_end_date:
+                break
+
+            new_event = Event(
+                title=self.title,
+                description=self.description,
+                start_time=current_date,
+                end_time=current_date + (self.end_time - self.start_time),
+                location=self.location,
+                created_by=self.created_by,
+                group=self.group,
+                is_recurring=False
+            )
+            events.append(new_event)
+
+            current_date = rule.after(current_date, inc=False)
+
+        return events
 
     def clean(self):
         if self.start_time >= self.end_time:

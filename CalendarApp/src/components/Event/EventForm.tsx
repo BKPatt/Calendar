@@ -69,10 +69,6 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
     const { data: groups, isLoading, error } = useApi<Group[]>(getGroups);
     const [selectedDays, setSelectedDays] = useState<string[]>([]);
 
-    useEffect(() => {
-        console.log("User: ", user)
-    }, []);
-
     const [eventData, setEventData] = useState<Events>({
         title: '',
         description: '',
@@ -176,6 +172,7 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
     return (
         <Dialog
             open={open}
+            sx={{ mt: 8 }}
             onClose={onClose}
             maxWidth="sm"
             fullWidth

@@ -1,12 +1,25 @@
+import { useAuth } from '../hooks/useAuth';
 import { ApiResponse, Attachment, Availability, Events, Invitation, Tag, UserDeviceToken, WorkSchedule } from '../types/event';
 import { Group } from '../types/group';
 import { User, UserProfile } from '../types/user';
 import { apiRequest, getPaginatedResults, handleApiError } from '../utils/apiHelpers';
 import { getCurrentUser } from './auth';
 
+/**
+ * Get user profile by user ID with authentication token
+ */
 export async function getUserProfile(userId: number): Promise<ApiResponse<UserProfile>> {
+    const access_token = localStorage.getItem('access_token'); // Get token from localStorage
+
+    if (!access_token) {
+        throw new Error('Authentication credentials were not provided.');
+    }
+
     try {
-        const response = await apiRequest<UserProfile>(`/users/${userId}/`, 'GET');
+        const response = await apiRequest<UserProfile>(`/users/${userId}/`, 'GET', null, {
+            Authorization: `Bearer ${access_token}` // Attach token to headers
+        });
+
         return {
             data: response.data,
             message: 'User profile fetched successfully',
@@ -15,7 +28,6 @@ export async function getUserProfile(userId: number): Promise<ApiResponse<UserPr
         throw new Error(handleApiError(error));
     }
 }
-
 
 /**
  * Update the user profile
@@ -34,11 +46,24 @@ export const updateUserProfile = async (
 export const getEvents = async (params?: Record<string, string>): Promise<ApiResponse<Events[]>> => {
     try {
         let url = '/events/';
-        if (params) {
-            const queryParams = new URLSearchParams(params);
-            url += `?${queryParams.toString()}`;
+        const user = await getCurrentUser();
+
+        if (!user || !user.id) {
+            throw new Error('User is not authenticated');
         }
+
+        if (params) {
+            params.user_id = user.id.toString();
+        } else {
+            params = { user_id: user.id.toString() };
+        }
+
+        const queryParams = new URLSearchParams(params);
+        url += `?${queryParams.toString()}`;
+
         const response = await apiRequest<Events[]>(url, 'GET');
+        console.log(response);
+
         return {
             data: response.data,
             message: 'Events fetched successfully',
@@ -69,8 +94,6 @@ export const createEvent = async (eventData: Partial<Events>): Promise<Events> =
         if (!payload.recurring) {
             delete payload.recurrence_rule;
         }
-
-        console.log("Payload being sent to the server:", payload);  // Add this line for debugging
 
         const response = await apiRequest<Events>('/events/', 'POST', payload);
         return response.data;
@@ -166,7 +189,6 @@ export const getUpcomingEvents = async (): Promise<ApiResponse<Events[]>> => {
     try {
         const user = await getCurrentUser();
         const response = await apiRequest<Events[]>(`/events/upcoming/?user_id=${user.id}`, 'GET');
-        console.log(response)
         return {
             data: response.data,
             message: 'Upcoming events fetched successfully',

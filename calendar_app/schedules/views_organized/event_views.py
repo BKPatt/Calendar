@@ -1,4 +1,6 @@
+from datetime import datetime, timedelta
 import logging
+from django.forms import ValidationError
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
@@ -9,6 +11,7 @@ from django.utils import timezone
 from django.http import HttpResponse
 import csv
 from dateutil.parser import parse
+from dateutil.rrule import rrule, WEEKLY, DAILY, MONTHLY, YEARLY, MO, TU, WE, TH, FR, SA, SU
 
 from ..models import Event, EventReminder, RecurringSchedule, CustomUser
 from ..serializers import EventSerializer, EventExportSerializer, RecurringScheduleSerializer
@@ -42,10 +45,10 @@ class EventViewSet(viewsets.ModelViewSet):
 
             if data.get('recurring'):
                 recurrence_rule = data.pop('recurrence_rule', {})
-                
+
                 try:
-                    start_time = parse(data['start_time']).time()
-                    end_time = parse(data['end_time']).time()
+                    start_time = timezone.make_aware(parse(data['start_time']))
+                    end_time = timezone.make_aware(parse(data['end_time']))
                 except ValueError as e:
                     return Response(
                         {'error': f'Invalid datetime format: {str(e)}'},
@@ -55,8 +58,8 @@ class EventViewSet(viewsets.ModelViewSet):
                 recurring_schedule = RecurringSchedule.objects.create(
                     user=request.user,
                     title=data['title'],
-                    start_time=start_time,
-                    end_time=end_time,
+                    start_time=start_time.time(),
+                    end_time=end_time.time(),
                     frequency=recurrence_rule.get('frequency'),
                     interval=recurrence_rule.get('interval', 1),
                     start_date=data['start_date'],
@@ -69,7 +72,7 @@ class EventViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             event = serializer.save(created_by=request.user)
 
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response({"data": serializer.data}, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             logger.error(f"Error creating event: {str(e)}")
@@ -77,61 +80,202 @@ class EventViewSet(viewsets.ModelViewSet):
                 {'error': 'Event creation failed due to an internal error.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-    
+
     def get_permissions(self):
-        """Customize permissions based on the action."""
         if self.action == 'list':
             return [permissions.AllowAny()]
         elif self.action in ['update', 'destroy']:
             return [permissions.IsAuthenticated(), IsEventOwnerOrShared()]
         return super().get_permissions()
 
+    @action(detail=False, methods=['get'])
+    def by_date_range(self, request):
+        user_id = request.query_params.get('user_id')
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        if not user_id or not start_date or not end_date:
+            return Response(
+                {'error': 'User ID, start_date, and end_date are required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            start_date = timezone.make_aware(datetime.fromisoformat(start_date))
+            end_date = timezone.make_aware(datetime.fromisoformat(end_date))
+        except ValueError:
+            return Response({'error': 'Invalid date format.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        events = Event.objects.filter(
+            Q(created_by__id=user_id) | Q(shared_with__id=user_id),
+            start_time__lte=end_date,
+            end_time__gte=start_date
+        ).order_by('start_time')
+
+        serializer = EventSerializer(events, many=True)
+        return Response({"data": serializer.data})
+
     def get_queryset(self):
-        """Only return events created by or shared with the user."""
         user = self.request.user
-        return Event.objects.filter(
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+
+        queryset = Event.objects.filter(
             Q(created_by=user) | 
             Q(shared_with=user) | 
             Q(group__members=user)
         ).distinct()
 
-    @action(detail=True, methods=['post'])
-    def share(self, request, pk=None):
-        """Share an event with specific users."""
-        try:
-            event = self.get_object()
-            user_ids = request.data.get('user_ids', [])
-            users = CustomUser.objects.filter(id__in=user_ids)
-            event.shared_with.add(*users)
-            return Response({'status': 'Event shared successfully'}, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Error sharing event {pk}: {str(e)}")
-            return Response(
-                {'error': 'Failed to share event.'},
-                status=status.HTTP_400_BAD_REQUEST
+        if start_date and end_date:
+            try:
+                start_date = timezone.make_aware(datetime.fromisoformat(start_date))
+                end_date = timezone.make_aware(datetime.fromisoformat(end_date))
+            except ValueError:
+                raise ValidationError("Invalid date format. Use ISO format (YYYY-MM-DDTHH:MM:SS).")
+
+            non_recurring_events = queryset.filter(
+                recurring=False,
+                start_time__lt=end_date,
+                end_time__gt=start_date
             )
 
-    @action(detail=True, methods=['post'])
-    def set_eta(self, request, pk=None):
-        """Set the ETA (Estimated Time of Arrival) for an event."""
+            recurring_events = queryset.filter(recurring=True)
+            recurring_event_instances = []
+
+            for event in recurring_events:
+                schedule = event.recurring_schedule
+                if schedule:
+                    rule = self.get_rrule(schedule, event.start_time)
+                    event_duration = event.end_time - event.start_time
+
+                    for occurrence in rule.between(start_date, end_date):
+                        recurring_event_instances.append(Event(
+                            id=event.id,
+                            title=event.title,
+                            description=event.description,
+                            start_time=occurrence,
+                            end_time=occurrence + event_duration,
+                            location=event.location,
+                            created_by=event.created_by,
+                            group=event.group,
+                            recurring=True,
+                            recurrence_rule=event.recurrence_rule,
+                            recurrence_end_date=event.recurrence_end_date,
+                            color=event.color,
+                            event_type=event.event_type,
+                            is_all_day=event.is_all_day
+                        ))
+
+            all_events = list(non_recurring_events) + recurring_event_instances
+            all_events.sort(key=lambda x: x.start_time)
+            return all_events
+
+        return queryset
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({"data": serializer.data})
+
+    def get_rrule(self, schedule, dtstart):
+        frequency_map = {
+            'DAILY': DAILY,
+            'WEEKLY': WEEKLY,
+            'MONTHLY': MONTHLY,
+            'YEARLY': YEARLY
+        }
+
+        rule_params = {
+            'freq': frequency_map[schedule.frequency],
+            'dtstart': dtstart,
+            'interval': schedule.interval,
+            'until': schedule.end_date,
+        }
+
+        byweekday = self.get_byweekday(schedule.days_of_week)
+        if byweekday:
+            rule_params['byweekday'] = byweekday
+
+        return rrule(**rule_params)
+
+    def get_byweekday(self, days_of_week):
+        days_map = {
+            "Monday": MO,
+            "Tuesday": TU,
+            "Wednesday": WE,
+            "Thursday": TH,
+            "Friday": FR,
+            "Saturday": SA,
+            "Sunday": SU
+        }
+        if not days_of_week:
+            return None
+        days_list = days_of_week.split(',')
+        return [days_map[day.strip()] for day in days_list if day.strip() in days_map]
+
+    @action(detail=False, methods=['get'])
+    def upcoming(self, request):
         try:
-            event = self.get_object()
-            eta = request.data.get('eta')
-            if eta:
-                event.eta = eta
-                event.save()
-                return Response({'status': 'ETA set successfully'}, status=status.HTTP_200_OK)
-            return Response({'status': 'Invalid ETA'}, status=status.HTTP_400_BAD_REQUEST)
+            user_id = request.query_params.get('user_id')
+            if not user_id:
+                return Response({'error': 'User ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            user = get_object_or_404(CustomUser, id=user_id)
+            now = timezone.now()
+            end_date = now + timedelta(days=7)
+
+            # Get all events (recurring and non-recurring) for the user
+            all_events = Event.objects.filter(
+                Q(created_by=user) | Q(shared_with=user),
+                Q(start_time__gte=now, start_time__lte=end_date) |  # Regular events
+                Q(recurring=True, recurrence_end_date__gte=now) |  # Recurring events that haven't ended
+                Q(recurring=True, recurrence_end_date__isnull=True)  # Recurring events with no end date
+            )
+
+            upcoming_events = []
+
+            for event in all_events:
+                if event.recurring:
+                    schedule = event.recurring_schedule
+                    if schedule:
+                        rule = self.get_rrule(schedule, event.start_time)
+                        event_duration = event.end_time - event.start_time
+
+                        for occurrence in rule.between(now, end_date):
+                            upcoming_events.append(Event(
+                                id=event.id,
+                                title=event.title,
+                                description=event.description,
+                                start_time=occurrence,
+                                end_time=occurrence + event_duration,
+                                location=event.location,
+                                created_by=event.created_by,
+                                group=event.group,
+                                recurring=True,
+                                recurrence_rule=event.recurrence_rule,
+                                recurrence_end_date=event.recurrence_end_date,
+                                color=event.color,
+                                event_type=event.event_type,
+                                is_all_day=event.is_all_day
+                            ))
+                else:
+                    upcoming_events.append(event)
+
+            # Sort events by start time
+            upcoming_events.sort(key=lambda x: x.start_time)
+
+            serializer = self.get_serializer(upcoming_events, many=True)
+            return Response({"data": serializer.data})
+
         except Exception as e:
-            logger.error(f"Error setting ETA for event {pk}: {str(e)}")
+            logger.error(f"Error fetching upcoming events: {str(e)}")
             return Response(
-                {'error': 'Failed to set ETA.'},
+                {'error': 'Failed to fetch upcoming events.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
     @action(detail=False, methods=['post'])
     def export(self, request):
-        """Export events to CSV or ICAL format."""
         try:
             serializer = EventExportSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
@@ -157,28 +301,6 @@ class EventViewSet(viewsets.ModelViewSet):
             logger.error(f"Error exporting events: {str(e)}")
             return Response(
                 {'error': 'Event export failed.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-    @action(detail=False, methods=['get'])
-    def upcoming(self, request):
-        """Get upcoming events within the next 30 days."""
-        try:
-            user_id = request.query_params.get('user_id')
-            if not user_id:
-                return Response({'error': 'User ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            upcoming_events = Event.objects.all().order_by('start_time')
-
-            serializer = self.get_serializer(upcoming_events, many=True)
-            serialized_data = serializer.data
-
-            return Response({"data": serialized_data})
-
-        except Exception as e:
-            logger.error(f"Error fetching upcoming events: {str(e)}")
-            return Response(
-                {'error': 'Failed to fetch upcoming events.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

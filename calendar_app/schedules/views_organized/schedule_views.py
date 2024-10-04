@@ -1,3 +1,4 @@
+from datetime import datetime
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -6,7 +7,7 @@ from rest_framework.decorators import action
 from django.forms import ValidationError
 
 from ..permissions import IsEventOwnerOrShared
-from ..models import RecurringSchedule, WorkSchedule, Availability
+from ..models import RecurringSchedule, WorkSchedule, Availability, Event
 from ..serializers import EventSerializer, RecurringScheduleSerializer, WorkScheduleSerializer, AvailabilitySerializer
 
 def find_common_free_time(user_events, start_date, end_date):
@@ -145,6 +146,33 @@ class RecurringScheduleViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return RecurringSchedule.objects.filter(user=self.request.user)
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+
+        # Create the initial event based on the recurring schedule
+        event_data = {
+            'title': serializer.validated_data['title'],
+            'description': serializer.validated_data.get('description', ''),
+            'start_time': serializer.validated_data['start_time'],
+            'end_time': serializer.validated_data['end_time'],
+            'location': serializer.validated_data.get('location', ''),
+            'created_by': request.user,
+            'recurring': True,
+            'recurrence_rule': {
+                'frequency': serializer.validated_data['frequency'],
+                'interval': serializer.validated_data['interval'],
+                'days_of_week': serializer.validated_data.get('days_of_week', []),
+            },
+            'color': serializer.validated_data.get('color', '#007bff'),
+            'recurring_schedule': serializer.instance,
+        }
+        Event.objects.create(**event_data)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def get_permissions(self):
         if self.action in ['update', 'destroy']:
@@ -154,7 +182,15 @@ class RecurringScheduleViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def generate_events(self, request, pk=None):
         recurring_schedule = self.get_object()
-        end_date = request.data.get('end_date', recurring_schedule.end_date)
+        end_date = request.data.get('end_date')
+        if not end_date:
+            return Response({'error': 'End date is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            end_date = timezone.make_aware(datetime.fromisoformat(end_date))
+        except ValueError:
+            return Response({'error': 'Invalid date format'}, status=status.HTTP_400_BAD_REQUEST)
+
         events = recurring_schedule.generate_events(end_date=end_date)
         serializer = EventSerializer(events, many=True)
         return Response(serializer.data)

@@ -22,13 +22,6 @@ const CalendarScreen: React.FC = () => {
 
     const { data: events, isLoading, error, refetch } = useApi<Events[]>(getUpcomingEvents);
 
-    console.log('API request:', {
-        start: format(startOfMonth(currentMonth), 'yyyy-MM-dd'),
-        end: format(endOfMonth(currentMonth), 'yyyy-MM-dd'),
-    });
-
-    console.log('Fetched events:', events);
-
     const changeMonth = useCallback((amount: number) => {
         setCurrentMonth((prevMonth) => addMonths(prevMonth, amount));
     }, []);
