@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
-import { CssBaseline, Drawer, List, ListItemText, ListItemButton } from '@mui/material';
+import { CssBaseline } from '@mui/material';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import theme from './theme';
 
@@ -15,9 +15,8 @@ import EventScreen from './screens/EventScreen';
 import UpcomingEventsScreen from './screens/UpcomingEventsScreen';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import PublicRoute from './auth/PublicRoute';
-import AppHeader from './AppContext';
-
-const drawerWidth = 240;
+import AppHeader from './AppHeader';
+import NavTray from './NavTray';  // Import the new NavTray component
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -41,38 +40,7 @@ const App: React.FC = () => {
         <Router>
           <div style={{ display: 'flex', position: 'relative' }}>
             <AppHeader onMenuClick={toggleDrawer} />
-
-            <Drawer
-              variant="temporary"
-              anchor="left"
-              open={isDrawerOpen}
-              onClose={toggleDrawer}
-              sx={{
-                width: drawerWidth,
-                '& .MuiDrawer-paper': {
-                  width: drawerWidth,
-                  top: '64px',
-                },
-              }}
-            >
-              <List>
-                <ListItemButton component="a" href="/">
-                  <ListItemText primary="Home" />
-                </ListItemButton>
-                <ListItemButton component="a" href="/calendar">
-                  <ListItemText primary="Calendar" />
-                </ListItemButton>
-                <ListItemButton component="a" href="/groups">
-                  <ListItemText primary="Groups" />
-                </ListItemButton>
-                <ListItemButton component="a" href="/profile">
-                  <ListItemText primary="Profile" />
-                </ListItemButton>
-                <ListItemButton component="a" href="/events">
-                  <ListItemText primary="Upcoming Events" />
-                </ListItemButton>
-              </List>
-            </Drawer>
+            <NavTray isDrawerOpen={isDrawerOpen} toggleDrawer={toggleDrawer} />  {/* Use NavTray component */}
 
             <main style={{ flexGrow: 1, padding: '80px 24px 24px' }}>
               <Routes>

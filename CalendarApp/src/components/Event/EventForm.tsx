@@ -25,7 +25,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
-import { createEvent, getGroups } from '../../services/api';
+import { eventApi } from '../../services/api/eventApi';
+import { groupApi } from '../../services/api/groupApi';
 import { Group } from '../../types/group';
 import { Events, EventType, RecurrenceRule } from '../../types/event';
 import AddIcon from '@mui/icons-material/Add';
@@ -63,6 +64,9 @@ interface EventFormProps {
 }
 
 const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) => {
+    const { createEvent } = eventApi;
+    const { getGroups } = groupApi;
+
     const { user, isAuthenticated } = useAuth();
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));

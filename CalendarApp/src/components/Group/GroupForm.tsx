@@ -12,8 +12,9 @@ import {
     useMediaQuery,
 } from '@mui/material';
 import { useApi } from '../../hooks/useApi';
-import { createGroup, updateGroup } from '../../services/api';
+import { groupApi } from '../../services/api/groupApi';
 import { Group } from '../../types/group';
+import { ApiResponse } from '../../types/event';
 
 interface GroupFormProps {
     open: boolean;
@@ -24,14 +25,19 @@ interface GroupFormProps {
 }
 
 const GroupForm: React.FC<GroupFormProps> = ({ open, onClose, onGroupCreated, onGroupUpdated, group }) => {
+    const { createGroup, updateGroup } = groupApi;
+
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
 
     const [groupData, setGroupData] = useState<Partial<Group>>({
         name: group?.name || '',
         description: group?.description || '',
-        isPublic: group?.isPublic || false,
+        is_public: group?.is_public || false,
     });
+
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -94,9 +100,9 @@ const GroupForm: React.FC<GroupFormProps> = ({ open, onClose, onGroupCreated, on
                     <FormControlLabel
                         control={
                             <Checkbox
-                                checked={groupData.isPublic}
+                                checked={groupData.is_public}
                                 onChange={handleCheckboxChange}
-                                name="isPublic"
+                                name="is_public"
                             />
                         }
                         label="Public Group"

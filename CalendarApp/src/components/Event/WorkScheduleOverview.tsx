@@ -2,10 +2,12 @@ import React from 'react';
 import { Typography, Box, List, ListItem, ListItemText, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
-import { getWorkSchedules } from '../../services/api';
+import { scheduleApi } from '../../services/api/scheduleApi';
 import { WorkSchedule } from '../../types/event';
 
 const WorkScheduleOverview: React.FC = () => {
+    const { getWorkSchedules } = scheduleApi;
+
     const navigate = useNavigate();
     const { data: schedules, isLoading, error } = useApi<WorkSchedule[]>(getWorkSchedules);
 

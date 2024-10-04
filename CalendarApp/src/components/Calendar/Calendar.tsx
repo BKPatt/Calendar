@@ -41,7 +41,7 @@ import {
 } from 'date-fns';
 import { Events } from '../../types/event';
 import { useApi } from '../../hooks/useApi';
-import { getEvents } from '../../services/api';
+import { eventApi } from '../../services/api/eventApi';
 import EventForm from '../Event/EventForm';
 
 const CalendarContainer = styled(Paper)(({ theme }) => ({
@@ -126,6 +126,7 @@ const Calendar: React.FC<CalendarProps> = ({
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [isEventFormOpen, setIsEventFormOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const { getEvents } = eventApi
 
     const { refetch } = useApi<Events[]>(() =>
         getEvents({

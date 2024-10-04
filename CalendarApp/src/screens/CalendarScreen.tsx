@@ -1,77 +1,102 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Container,
     Typography,
     Box,
+    Paper,
+    Button,
+    CircularProgress,
     Dialog,
+    DialogContent,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
-import { getUpcomingEvents } from '../services/api';
+import { eventApi } from '../services/api/eventApi';
 import { Events } from '../types/event';
-import { addMonths, endOfMonth, format, startOfMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import Calendar from '../components/Calendar/Calendar';
 import EventForm from '../components/Event/EventForm';
 
 const CalendarScreen: React.FC = () => {
-    const [currentMonth, setCurrentMonth] = useState(new Date());
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-    const [isEventFormOpen, setIsEventFormOpen] = useState(false);
-
+    const { getEvents } = eventApi;
     const navigate = useNavigate();
 
-    const { data: events, isLoading, error, refetch } = useApi<Events[]>(getUpcomingEvents);
+    const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
+    const [events, setEvents] = useState<Events[]>([]);
+    const [isLoadingEvents, setIsLoadingEvents] = useState<boolean>(true);
+    const [isEventFormOpen, setIsEventFormOpen] = useState(false);
 
-    const changeMonth = useCallback((amount: number) => {
-        setCurrentMonth((prevMonth) => addMonths(prevMonth, amount));
-    }, []);
+    // Fetch events for the current month
+    const fetchEventsForMonth = async (month: Date) => {
+        setIsLoadingEvents(true);
+        try {
+            const startDate = format(startOfMonth(month), 'yyyy-MM-dd');
+            const endDate = format(endOfMonth(month), 'yyyy-MM-dd');
+            const response = await getEvents({
+                start_date: startDate,
+                end_date: endDate,
+            });
+            setEvents(response.data || []);
+        } catch (error) {
+            console.error('Failed to fetch events:', error);
+        } finally {
+            setIsLoadingEvents(false);
+        }
+    };
 
-    const goToToday = useCallback(() => {
-        setCurrentMonth(new Date());
-        setSelectedDate(new Date());
-    }, []);
+    useEffect(() => {
+        fetchEventsForMonth(currentMonth);
+    }, [currentMonth]);
 
-    const handleCreateEvent = useCallback(() => {
+    const handleCreateEvent = () => {
         setIsEventFormOpen(true);
-    }, []);
+    };
 
-    const handleEventFormClose = useCallback(() => {
+    const handleCloseEventForm = () => {
         setIsEventFormOpen(false);
-        refetch();
-    }, [refetch]);
+        fetchEventsForMonth(currentMonth);
+    };
 
-    const handleEventClick = useCallback((eventId: number) => {
-        navigate(`/events/${eventId}`);
-    }, [navigate]);
+    const changeMonth = (amount: number) => {
+        setCurrentMonth(addMonths(currentMonth, amount));
+    };
 
-    const handleDateClick = useCallback((date: Date) => {
-        setSelectedDate(date);
-    }, []);
+    const goToToday = () => {
+        setCurrentMonth(startOfMonth(new Date()));
+    };
 
-    if (isLoading) return <Typography>Loading calendar...</Typography>;
-    if (error) return <Typography color="error">Error: {error}</Typography>;
+    if (isLoadingEvents) return <Typography>Loading calendar...</Typography>;
 
     return (
-        <Container maxWidth="lg">
+        <Container maxWidth="xl">
             <Box my={4}>
-                <Calendar
-                    currentMonth={currentMonth}
-                    events={events || []}
-                    onDateClick={handleDateClick}
-                    onEventClick={handleEventClick}
-                    changeMonth={changeMonth}
-                    goToToday={goToToday}
-                    handleCreateEvent={handleCreateEvent}
-                />
-
-                <Dialog open={isEventFormOpen} onClose={handleEventFormClose} maxWidth="md" fullWidth>
-                    <EventForm
-                        open={isEventFormOpen}
-                        onClose={handleEventFormClose}
-                        onEventCreated={refetch}
+                <Paper elevation={3} sx={{ p: 2 }}>
+                    <Calendar
+                        currentMonth={currentMonth}
+                        events={events}
+                        onDateClick={(date) => console.log('Date clicked:', date)}
+                        onEventClick={(eventId) => navigate(`/events/${eventId}`)}
+                        changeMonth={changeMonth}
+                        goToToday={goToToday}
+                        handleCreateEvent={handleCreateEvent}
                     />
-                </Dialog>
+                </Paper>
             </Box>
+
+            <Dialog
+                open={isEventFormOpen}
+                onClose={handleCloseEventForm}
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogContent>
+                    <EventForm
+                        onClose={handleCloseEventForm}
+                        onEventCreated={handleCloseEventForm}
+                        open={isEventFormOpen}
+                    />
+                </DialogContent>
+            </Dialog>
         </Container>
     );
 };

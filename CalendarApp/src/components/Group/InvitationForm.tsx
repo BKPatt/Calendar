@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
-import { getGroups } from '../../services/api';
+import { groupApi } from '../../services/api/groupApi';
 import { Group } from '../../types/group';
 import { User } from '../../types/user';
 
@@ -27,6 +27,8 @@ interface InvitationFormProps {
 }
 
 const InvitationForm: React.FC<InvitationFormProps> = ({ open, onClose, onInvitationSent }) => {
+    const { getGroups } = groupApi;
+
     const { user } = useAuth();
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));

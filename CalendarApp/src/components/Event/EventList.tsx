@@ -14,7 +14,7 @@ import { Edit, Delete, Event as EventIcon } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { Events } from '../../types/event';
 import { useApi } from '../../hooks/useApi';
-import { getEvents, deleteEvent } from '../../services/api';
+import { eventApi } from '../../services/api/eventApi';
 import EventForm from './EventForm';
 
 const EventListContainer = styled(Box)(({ theme }) => ({
@@ -30,6 +30,8 @@ const EventItem = styled(ListItem)(({ theme }) => ({
 }));
 
 const EventList: React.FC = () => {
+    const { getEvents, deleteEvent } = eventApi;
+
     const [events, setEvents] = useState<Events[]>([]);
     const [editingEvent, setEditingEvent] = useState<Events | null>(null);
 

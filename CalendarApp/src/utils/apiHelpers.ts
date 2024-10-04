@@ -1,5 +1,6 @@
 import { ApiResponse, PaginatedResponse } from "../types/event";
 import * as authService from '../services/auth';
+import { authApi } from "../services/api/authApi";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
 
@@ -40,9 +41,7 @@ export const apiRequest = async <T>(
             if (newAccessToken) {
                 accessToken = newAccessToken;
                 headers.Authorization = `Bearer ${newAccessToken}`;
-
                 config.headers = { ...headers };
-
                 response = await fetch(`${API_BASE_URL}${endpoint}`, config);
             } else {
                 throw new Error('Token refresh failed');
@@ -68,14 +67,15 @@ export const apiRequest = async <T>(
  */
 const refreshAccessToken = async (refreshToken: string): Promise<string | null> => {
     try {
-        const response = await authService.refreshToken(refreshToken);
-        if (response.access) {
-            localStorage.setItem('access_token', response.access);
-            return response.access;
+        const response = await authApi.refreshToken(refreshToken);
+        if (response.data.access) {
+            localStorage.setItem('access_token', response.data.access);
+            return response.data.access;
         } else {
             throw new Error('Token refresh failed');
         }
     } catch (error) {
+        console.error('Error refreshing token:', error);
         return null;
     }
 };
@@ -91,18 +91,28 @@ export const getPaginatedResults = async <T>(
     params: Record<string, string> = {}
 ): Promise<PaginatedResponse<T[]>> => {
     const queryString = new URLSearchParams(params).toString();
-    const fullEndpoint = `${endpoint}?${queryString}`;
+
+    const fullEndpoint = endpoint.includes('?')
+        ? `${endpoint}${queryString}`
+        : `${endpoint}?${queryString}`;
+
     const response = await apiRequest<PaginatedResponse<T[]>>(fullEndpoint);
 
-    if (response && typeof response === 'object' && 'data' in response) {
-        const paginatedData = response.data;
-        if ('count' in paginatedData && 'results' in paginatedData) {
-            return paginatedData as PaginatedResponse<T[]>;
+    if (response && typeof response === 'object') {
+        if ('data' in response) {
+            const paginatedData = response.data;
+
+            if ('count' in paginatedData && 'results' in paginatedData) {
+                return paginatedData as PaginatedResponse<T[]>;
+            }
+        } else if ('count' in response && 'results' in response) {
+            return response as PaginatedResponse<T[]>;
         }
     }
 
     throw new Error('Invalid paginated response structure');
 };
+
 
 /**
  * Construct query string from an object

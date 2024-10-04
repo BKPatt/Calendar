@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views_organized.user_views import UserProfileViewSet, UserStatsView, UserDeviceTokenViewSet, ETAUpdateView
+from .views_organized.user_views import UserProfileViewSet, UserStatsView, UserDeviceTokenViewSet, ETAUpdateView, update_user_profile
 from .views_organized.group_views import GroupViewSet, GroupStatsView, GroupMembershipView, GroupInvitationView, GroupInvitationResponseView, GroupListView, GroupAvailabilityView, GroupScheduleView
 from .views_organized.event_views import EventViewSet, EventShareView, EventCreateView, EventReminderView, BulkEventCreateView, ConflictCheckView
 from .views_organized.schedule_views import WorkScheduleViewSet, RecurringScheduleViewSet, AvailabilityViewSet, UserAvailabilityView
@@ -9,7 +9,7 @@ from .views_organized.notification_views import NotificationViewSet, Notificatio
 from .views_organized.search_views import SearchView
 from .views_organized.auth_views import AuthView, PasswordResetView, EmailVerificationView, RegisterView, LoginView, LogoutView, current_user, verify_token, CustomTokenRefreshView
 from .views_organized.calendar_views import CalendarSyncView, GoogleCalendarSyncView, OutlookCalendarSyncView, ImportExportView
-from .views_organized.invitation_views import InvitationViewSet
+from .views_organized.invitation_views import EventInvitationView, InvitationViewSet
 from .views_organized.attachent_views import AttachmentViewSet
 from .views_organized.user_settings import TagViewSet, DashboardView, SettingsView
 from .views_organized.user_views import get_user_profile
@@ -42,6 +42,7 @@ urlpatterns = [
     path('group-membership/<int:group_id>/', GroupMembershipView.as_view(), name='group-membership'),
     path('group-invitation/<int:group_id>/<int:user_id>/', GroupInvitationView.as_view(), name='group-invitation'),
     path('group-invitation-response/<int:invitation_id>/', GroupInvitationResponseView.as_view(), name='group-invitation-response'),
+    path('groups/<int:group_id>/events/', GroupScheduleView.as_view(), name='group-events'),
 
     # Calendar Sync and search-related paths
     path('calendar-sync/', CalendarSyncView.as_view(), name='calendar-sync'),
@@ -87,4 +88,9 @@ urlpatterns = [
     path('groups/', GroupListView.as_view(), name='group-list'),
     
     path('users/<int:user_id>/', get_user_profile, name='user_profile'),
+    path('users/<int:user_id>/update_profile/', update_user_profile, name='update_user_profile'),
+    
+    # Invitation paths
+    path('group-invitation/<int:group_id>/<int:user_id>/', GroupInvitationView.as_view(), name='group-invitation'),
+    path('event-invitation/<int:event_id>/<int:user_id>/', EventInvitationView.as_view(), name='event-invitation'),
 ]

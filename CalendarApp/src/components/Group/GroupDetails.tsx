@@ -15,11 +15,12 @@ import {
 import { Person as PersonIcon, Event as EventIcon } from '@mui/icons-material';
 import { useParams } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
-import { getGroup, getGroupEvents, getGroupSchedule } from '../../services/api';
+import { groupApi } from '../../services/api/groupApi';
 import { Group } from '../../types/group';
 import { WorkSchedule, Events } from '../../types/event';
 import GroupScheduleView from '../../components/Group/GroupScheduleView';
 import { User } from '../../types/user';
+import { eventApi } from '../../services/api/eventApi';
 
 interface TabPanelProps {
     children?: React.ReactNode;
@@ -36,6 +37,8 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
 };
 
 const GroupDetails: React.FC = () => {
+    const { getGroup, getGroupEvents, getGroupSchedule } = groupApi;
+
     const { groupId } = useParams<{ groupId: string }>();
     const [tabValue, setTabValue] = useState(0);
 

@@ -16,10 +16,9 @@ import { AccessTime, Room, Group, Edit, Delete } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
-import { getEvent, deleteEvent, updateEvent } from '../../services/api';
+import { eventApi } from '../../services/api/eventApi';
 import { ApiResponse, Events } from '../../types/event';
 import EventForm from './EventForm';
-import { User } from '../../types/user';
 
 const EventDetails: React.FC = () => {
     const { eventId } = useParams<{ eventId: string }>();
@@ -30,6 +29,7 @@ const EventDetails: React.FC = () => {
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
+    const { getEvent, deleteEvent, updateEvent } = eventApi;
 
     const { data, isLoading, error, refetch } = useApi<ApiResponse<Events>>(() => getEvent(Number(eventId)));
 

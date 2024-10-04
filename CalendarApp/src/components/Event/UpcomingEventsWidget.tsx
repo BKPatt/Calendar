@@ -3,11 +3,13 @@ import { Typography, Box, List, ListItem, ListItemText, ListItemIcon, Button, Av
 import { Event as EventIcon, Repeat as RepeatIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
-import { getUpcomingEvents } from '../../services/api';
+import { eventApi } from '../../services/api/eventApi';
 import { Events } from '../../types/event';
 import { format, isSameDay, addDays, parseISO } from 'date-fns';
 
 const UpcomingEventsWidget: React.FC = () => {
+    const { getUpcomingEvents } = eventApi;
+
     const navigate = useNavigate();
     const { data: events, isLoading, error } = useApi<Events[]>(getUpcomingEvents);
     const [expanded, setExpanded] = useState(false);

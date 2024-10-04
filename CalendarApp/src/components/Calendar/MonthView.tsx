@@ -22,7 +22,7 @@ import Day from './Day';
 import Event from './Event';
 import { Events } from '../../types/event';
 import { useApi } from '../../hooks/useApi';
-import { getEvents } from '../../services/api';
+import { eventApi } from '../../services/api/eventApi';
 
 const MonthViewContainer = styled(Box)(({ theme }) => ({
     padding: theme.spacing(2),
@@ -58,6 +58,7 @@ const MonthView: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const { getEvents } = eventApi;
 
     const { data: events, isLoading, error, refetch } = useApi<Events[]>(getEvents);
 

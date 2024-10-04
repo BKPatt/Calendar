@@ -22,7 +22,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
-import { getEvents, getGroups, getUpcomingEvents } from '../services/api';
+import { eventApi } from '../services/api/eventApi';
+import { groupApi } from '../services/api/groupApi';
 import { Events } from '../types/event';
 import { startOfMonth, endOfMonth, format, addMonths } from 'date-fns';
 import Calendar from '../components/Calendar/Calendar';
@@ -31,8 +32,12 @@ import UpcomingEventsWidget from '../components/Event/UpcomingEventsWidget';
 import GroupForm from '../components/Group/GroupForm';
 import InvitationForm from '../components/Group/InvitationForm';
 import { Group } from '../types/group';
+import GroupOverview from '../components/Group/GroupOverview';
 
 const HomeScreen: React.FC = () => {
+    const { getEvents, getUpcomingEvents } = eventApi;
+    const { getGroups } = groupApi;
+
     const theme = useTheme();
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -129,7 +134,6 @@ const HomeScreen: React.FC = () => {
                 </Typography>
 
                 <Grid2 container spacing={3}>
-                    {/* Upcoming Events (Left) - Set to smaller width */}
                     <Grid2 size={{ xs: 12, lg: 2 }}>
                         <Paper elevation={3} sx={{ p: 2 }}>
                             {isLoadingUpcomingEvents ? (
@@ -148,7 +152,6 @@ const HomeScreen: React.FC = () => {
                         </Paper>
                     </Grid2>
 
-                    {/* Calendar (Middle) - Set to larger width */}
                     <Grid2 size={{ xs: 12, lg: 8 }}>
                         <Paper elevation={3} sx={{ p: 2 }}>
                             {isLoadingEvents ? (
@@ -167,7 +170,6 @@ const HomeScreen: React.FC = () => {
                         </Paper>
                     </Grid2>
 
-                    {/* Quick Actions (Right) - Set to smaller width */}
                     <Grid2 size={{ xs: 12, lg: 2 }}>
                         <Paper elevation={3} sx={{ p: 2 }}>
                             <Typography variant="h6" gutterBottom>
@@ -233,7 +235,18 @@ const HomeScreen: React.FC = () => {
                 </Grid2>
             </Box>
 
-            {/* Event Creation Dialog */}
+            <Box my={4}>
+                <Grid2 container spacing={3}>
+                    <Grid2 size={{ xs: 12, lg: 5 }}>
+                        <Paper elevation={3} sx={{ p: 2 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                                <GroupOverview />
+                            </Box>
+                        </Paper>
+                    </Grid2>
+                </Grid2>
+            </Box>
+
             <Dialog
                 open={isEventCreateOpen}
                 onClose={handleCloseEventCreate}
@@ -249,7 +262,6 @@ const HomeScreen: React.FC = () => {
                 </DialogContent>
             </Dialog>
 
-            {/* Group Creation Dialog */}
             <Dialog
                 open={isGroupCreateOpen}
                 onClose={handleCloseGroupCreate}
@@ -265,7 +277,6 @@ const HomeScreen: React.FC = () => {
                 </DialogContent>
             </Dialog>
 
-            {/* Group Edit Dialog */}
             <Dialog
                 open={isGroupEditOpen}
                 onClose={handleCloseGroupEdit}
@@ -282,7 +293,6 @@ const HomeScreen: React.FC = () => {
                 </DialogContent>
             </Dialog>
 
-            {/* Invitation Dialog */}
             <Dialog
                 open={isInvitationOpen}
                 onClose={handleCloseInvitation}

@@ -93,6 +93,23 @@ def get_user_profile(request, user_id):
         'data': serializer.data,
         'message': 'User profile fetched successfully'
     })
+    
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_user_profile(request, user_id):
+    try:
+        profile = UserProfile.objects.get(user_id=user_id)
+    except UserProfile.DoesNotExist:
+        return Response({"error": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.user.id != int(user_id):
+        return Response({"error": "You don't have permission to update this profile"}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = UserProfileSerializer(profile, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserDeviceTokenViewSet(viewsets.ModelViewSet):
     queryset = UserDeviceToken.objects.all()

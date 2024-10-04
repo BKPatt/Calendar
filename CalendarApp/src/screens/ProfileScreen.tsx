@@ -6,7 +6,7 @@ import {
     Button,
     Avatar,
     Box,
-    Grid2,
+    Grid,
     Paper,
     CircularProgress,
     Snackbar,
@@ -15,34 +15,41 @@ import {
     InputLabel,
     FormControl,
     SelectChangeEvent,
+    Divider,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
 } from '@mui/material';
-import { Edit as EditIcon, Save as SaveIcon, Cancel as CancelIcon, Logout as LogoutIcon } from '@mui/icons-material';
+import {
+    Edit as EditIcon,
+    Save as SaveIcon,
+    Cancel as CancelIcon,
+    Logout as LogoutIcon,
+    CloudUpload as UploadIcon,
+} from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
-import { getUserProfile, updateUserProfile } from '../services/api';
+import { userApi } from '../services/api/userApi';
 import { UserProfile } from '../types/user';
-
-const randomColor = () => {
-    const colors = ['#f44336', '#e91e63', '#9c27b0', '#2196f3', '#4caf50', '#ff9800'];
-    return colors[Math.floor(Math.random() * colors.length)];
-};
-
-const initialsFromName = (username: string) => username.slice(0, 2).toUpperCase();
+import { useNavigate } from 'react-router-dom';
 
 const ProfileScreen: React.FC = () => {
+    const { getUserProfile, updateUserProfile } = userApi;
     const { user, logout } = useAuth();
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
-    const [avatarColor, setAvatarColor] = useState<string>(randomColor());
+    const [avatarColor, setAvatarColor] = useState<string>('#2196f3');
+    const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (user) {
             getUserProfile(user.id)
                 .then((response) => {
                     setProfile(response.data);
-                    setAvatarColor(randomColor()); // Set random color for avatar on load
                 })
                 .catch(() => setSnackbarMessage('Error loading profile data'));
         }
@@ -71,7 +78,8 @@ const ProfileScreen: React.FC = () => {
     const handleSave = async () => {
         if (user && profile) {
             try {
-                await updateUserProfile(user.id, editedProfile);
+                const response = await updateUserProfile(user.id, editedProfile);
+                setProfile(response.data);
                 setSnackbarMessage('Profile updated successfully');
                 setSnackbarOpen(true);
                 setIsEditing(false);
@@ -82,16 +90,22 @@ const ProfileScreen: React.FC = () => {
         }
     };
 
+    const openConfirmLogout = () => {
+        setConfirmLogoutOpen(true);
+    };
+
+    const closeConfirmLogout = () => {
+        setConfirmLogoutOpen(false);
+    };
+
+    const doLogout = async () => {
+        await logout();
+        navigate('/signin', { replace: true });
+        window.location.reload();
+    };
+
     if (!user) return <Typography>Please log in to view your profile.</Typography>;
     if (!profile) return <CircularProgress />;
-
-    const avatarContent = profile.profilePicture ? (
-        <Avatar src={profile.profilePicture} sx={{ width: 150, height: 150, mb: 2 }} />
-    ) : (
-        <Avatar sx={{ width: 150, height: 150, mb: 2, bgcolor: avatarColor }}>
-            {initialsFromName(user.username)}
-        </Avatar>
-    );
 
     return (
         <Container maxWidth="md">
@@ -102,39 +116,64 @@ const ProfileScreen: React.FC = () => {
                     </Typography>
                     {!isEditing ? (
                         <Box>
-                            <Button startIcon={<EditIcon />} onClick={handleEdit}>
+                            <Button
+                                variant="outlined"
+                                startIcon={<EditIcon />}
+                                onClick={handleEdit}
+                                sx={{ mr: 2 }}
+                            >
                                 Edit Profile
                             </Button>
-                            <Button startIcon={<LogoutIcon />} onClick={logout} sx={{ ml: 2 }}>
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                startIcon={<LogoutIcon />}
+                                onClick={openConfirmLogout}
+                            >
                                 Log Out
                             </Button>
                         </Box>
                     ) : (
                         <Box>
-                            <Button startIcon={<SaveIcon />} onClick={handleSave} sx={{ mr: 1 }}>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                startIcon={<SaveIcon />}
+                                onClick={handleSave}
+                                sx={{ mr: 2 }}
+                            >
                                 Save
                             </Button>
-                            <Button startIcon={<CancelIcon />} onClick={handleCancel}>
+                            <Button
+                                variant="outlined"
+                                startIcon={<CancelIcon />}
+                                onClick={handleCancel}
+                            >
                                 Cancel
                             </Button>
                         </Box>
                     )}
                 </Box>
-                <Grid2 container spacing={3}>
-                    <Grid2 sx={{ size: 12, '@media (min-width:600px)': { size: 4 } }}>
+                <Grid container spacing={3}>
+                    <Grid item xs={12} sm={4}>
                         <Box display="flex" flexDirection="column" alignItems="center">
-                            {avatarContent}
+                            <Avatar
+                                src={profile.profilePicture}
+                                sx={{ width: 150, height: 150, mb: 2, bgcolor: avatarColor }}
+                            >
+                                {profile.username?.charAt(0).toUpperCase() || ''}
+                            </Avatar>
                             {isEditing && (
-                                <Button variant="outlined" component="label">
+                                <Button variant="outlined" component="label" startIcon={<UploadIcon />}>
                                     Upload Picture
-                                    <input type="file" hidden />
+                                    <input type="file" hidden accept="image/*" />
                                 </Button>
                             )}
                         </Box>
-                    </Grid2>
-                    <Grid2 sx={{ size: 12, '@media (min-width:600px)': { size: 8 } }}>
-                        <Grid2 container spacing={2}>
-                            <Grid2 sx={{ size: 12 }}>
+                    </Grid>
+                    <Grid item xs={12} sm={8}>
+                        <Grid container spacing={2}>
+                            <Grid item xs={12}>
                                 <TextField
                                     fullWidth
                                     label="Username"
@@ -142,8 +181,8 @@ const ProfileScreen: React.FC = () => {
                                     value={profile.username}
                                     disabled
                                 />
-                            </Grid2>
-                            <Grid2 sx={{ size: 12 }}>
+                            </Grid>
+                            <Grid item xs={12}>
                                 <TextField
                                     fullWidth
                                     label="Email"
@@ -151,8 +190,8 @@ const ProfileScreen: React.FC = () => {
                                     value={profile.email}
                                     disabled
                                 />
-                            </Grid2>
-                            <Grid2 sx={{ size: 12 }}>
+                            </Grid>
+                            <Grid item xs={12}>
                                 <TextField
                                     fullWidth
                                     label="Phone Number"
@@ -161,16 +200,18 @@ const ProfileScreen: React.FC = () => {
                                     onChange={handleTextFieldChange}
                                     disabled={!isEditing}
                                 />
-                            </Grid2>
-                            <Grid2 sx={{ size: 12 }}>
+                            </Grid>
+                            <Grid item xs={12}>
                                 <FormControl fullWidth disabled={!isEditing}>
-                                    <InputLabel id="default-timezone-label">Default Timezone</InputLabel>
+                                    <InputLabel id="timezone-label">Timezone</InputLabel>
                                     <Select
-                                        labelId="default-timezone-label"
+                                        labelId="timezone-label"
                                         name="defaultTimezone"
-                                        value={isEditing ? editedProfile.defaultTimezone : profile.defaultTimezone}
+                                        value={
+                                            isEditing ? editedProfile.defaultTimezone : profile.defaultTimezone
+                                        }
                                         onChange={handleSelectChange}
-                                        label="Default Timezone"
+                                        label="Timezone"
                                     >
                                         <MenuItem value="UTC">UTC</MenuItem>
                                         <MenuItem value="America/New_York">Eastern Time</MenuItem>
@@ -179,31 +220,50 @@ const ProfileScreen: React.FC = () => {
                                         <MenuItem value="America/Los_Angeles">Pacific Time</MenuItem>
                                     </Select>
                                 </FormControl>
-                            </Grid2>
+                            </Grid>
                             {profile.bio && (
-                                <Grid2 sx={{ size: 12 }}>
-                                    <TextField
-                                        fullWidth
-                                        label="Bio"
-                                        name="bio"
-                                        value={isEditing ? editedProfile.bio : profile.bio}
-                                        onChange={handleTextFieldChange}
-                                        disabled={!isEditing}
-                                        multiline
-                                        rows={4}
-                                    />
-                                </Grid2>
+                                <>
+                                    <Grid item xs={12}>
+                                        <Divider sx={{ my: 2 }} />
+                                    </Grid>
+                                    <Grid item xs={12}>
+                                        <TextField
+                                            fullWidth
+                                            label="Bio"
+                                            name="bio"
+                                            value={isEditing ? editedProfile.bio : profile.bio}
+                                            onChange={handleTextFieldChange}
+                                            disabled={!isEditing}
+                                            multiline
+                                            rows={4}
+                                        />
+                                    </Grid>
+                                </>
                             )}
-                        </Grid2>
-                    </Grid2>
-                </Grid2>
+                        </Grid>
+                    </Grid>
+                </Grid>
             </Paper>
+
             <Snackbar
                 open={snackbarOpen}
                 autoHideDuration={6000}
                 onClose={() => setSnackbarOpen(false)}
                 message={snackbarMessage}
             />
+
+            <Dialog open={confirmLogoutOpen} onClose={closeConfirmLogout}>
+                <DialogTitle>Confirm Logout</DialogTitle>
+                <DialogContent>
+                    <Typography>Are you sure you want to log out?</Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={closeConfirmLogout}>Cancel</Button>
+                    <Button onClick={doLogout} color="error">
+                        Log Out
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Container>
     );
 };

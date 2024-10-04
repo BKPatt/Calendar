@@ -4,7 +4,7 @@ import {
     Typography,
     Box,
     Paper,
-    Grid2,
+    Grid,
     Button,
     Chip,
     Avatar,
@@ -19,6 +19,7 @@ import {
     TextField,
     CircularProgress,
     IconButton,
+    Tooltip,
 } from '@mui/material';
 import { useTheme } from '@mui/system';
 import {
@@ -34,13 +35,14 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
-import { getEvent, updateEvent, deleteEvent, shareEvent } from '../services/api';
+import { eventApi } from '../services/api/eventApi';
 import { ApiResponse, Events } from '../types/event';
 import { User } from '../types/user';
 import { formatDate } from '../utils/dateHelpers';
 import EventForm from '../components/Event/EventForm';
 
 const EventScreen: React.FC = () => {
+    const { getEvent, updateEvent, deleteEvent, shareEvent } = eventApi;
     const theme = useTheme();
     const { eventId } = useParams<{ eventId: string }>();
     const navigate = useNavigate();
@@ -52,7 +54,6 @@ const EventScreen: React.FC = () => {
     const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
 
     const { data: eventResponse, isLoading, error, refetch } = useApi<ApiResponse<Events>>(() => getEvent(Number(eventId)));
-
     const event = eventResponse?.data;
 
     const handleEdit = useCallback(() => {
@@ -77,18 +78,6 @@ const EventScreen: React.FC = () => {
 
     const getInitials = (user: User) => {
         return `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}` || user.username[0];
-    };
-
-    const getFullName = (user: User) => {
-        if (user.firstName && user.lastName) {
-            return `${user.firstName} ${user.lastName}`;
-        } else if (user.firstName) {
-            return user.firstName;
-        } else if (user.lastName) {
-            return user.lastName;
-        } else {
-            return user.username;
-        }
     };
 
     const handleConfirmDelete = useCallback(async () => {
@@ -128,52 +117,66 @@ const EventScreen: React.FC = () => {
         }
     }, [event, refetch]);
 
-    if (isLoading) return <CircularProgress />;
+    if (isLoading) return (
+        <Box display="flex" justifyContent="center" mt={5}>
+            <CircularProgress />
+        </Box>
+    );
     if (error) return <Typography color="error">Error: {error}</Typography>;
     if (!event) return <Typography>Event not found</Typography>;
 
     const isOwner = user && event.created_by === user.id;
 
     return (
-        <Container maxWidth="md">
-            <Paper elevation={3} sx={{ mt: 4, p: 3 }}>
+        <Container maxWidth="md" sx={{ mt: 4 }}>
+            <Paper
+                elevation={3}
+                sx={{
+                    p: 3,
+                    borderRadius: 3,
+                    backgroundColor: theme.palette.background.paper,
+                    boxShadow: `0px 4px 20px ${theme.palette.grey[300]}`,
+                }}
+            >
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="h4" component="h1">
+                    <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
                         {event.title}
                     </Typography>
                     <Box>
                         {isOwner && (
                             <>
-                                <IconButton onClick={handleEdit} color="primary">
-                                    <EditIcon />
-                                </IconButton>
-                                <IconButton onClick={handleDelete} color="error">
-                                    <DeleteIcon />
-                                </IconButton>
+                                <Tooltip title="Edit Event">
+                                    <IconButton onClick={handleEdit} color="primary" aria-label="edit">
+                                        <EditIcon />
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Delete Event">
+                                    <IconButton onClick={handleDelete} color="error" aria-label="delete">
+                                        <DeleteIcon />
+                                    </IconButton>
+                                </Tooltip>
                             </>
                         )}
-                        <IconButton onClick={handleShare} color="primary">
-                            <ShareIcon />
-                        </IconButton>
+                        <Tooltip title="Share Event">
+                            <IconButton onClick={handleShare} color="primary" aria-label="share">
+                                <ShareIcon />
+                            </IconButton>
+                        </Tooltip>
                     </Box>
                 </Box>
-                <Grid2 container spacing={2}>
-                    <Grid2
-                        sx={{
-                            size: 12,
-                            '@media (min-width:600px)': { size: 6 }
-                        }}
-                    >
+
+                <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
                         <Box display="flex" alignItems="center" mb={1}>
                             <ScheduleIcon sx={{ mr: 1 }} color="action" />
-                            <Typography>
-                                {formatDate(event.start_time, 'PPp')} - {formatDate(event.end_time, 'PPp')}
+                            <Typography variant="body1">
+                                {`${formatDate(event.start_time, 'PPp')} - ${formatDate(event.end_time, 'PPp')}`}
                             </Typography>
                         </Box>
                         {event.location && (
                             <Box display="flex" alignItems="center" mb={1}>
                                 <RoomIcon sx={{ mr: 1 }} color="action" />
-                                <Typography>{event.location}</Typography>
+                                <Typography variant="body1">{event.location}</Typography>
                             </Box>
                         )}
                         <Box display="flex" alignItems="center" mb={1}>
@@ -183,22 +186,19 @@ const EventScreen: React.FC = () => {
                         {event.group && (
                             <Box display="flex" alignItems="center" mb={1}>
                                 <GroupIcon sx={{ mr: 1 }} color="action" />
-                                <Typography>{event.group}</Typography>
+                                <Typography variant="body1">{event.group}</Typography>
                             </Box>
                         )}
-                    </Grid2>
-                    <Grid2
-                        sx={{
-                            size: 12,
-                            '@media (min-width:600px)': { size: 6 }
-                        }}
-                    >
-                        <Typography variant="h6" gutterBottom>Description</Typography>
-                        <Typography>{event.description}</Typography>
-                    </Grid2>
-                </Grid2>
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }} gutterBottom>Description</Typography>
+                        <Typography variant="body1">{event.description}</Typography>
+                    </Grid>
+                </Grid>
+
                 <Box mt={3}>
-                    <Typography variant="h6" gutterBottom>Shared with</Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }} gutterBottom>Shared with</Typography>
                     <List>
                         {event.sharedWith.map((userId: number) => (
                             <ListItem key={userId}>
@@ -207,17 +207,16 @@ const EventScreen: React.FC = () => {
                                         {userId}
                                     </Avatar>
                                 </ListItemAvatar>
-                                <ListItemText
-                                    primary={`User ID: ${userId}`}
-                                />
+                                <ListItemText primary={`User ID: ${userId}`} />
                             </ListItem>
                         ))}
                     </List>
                 </Box>
+
                 {event.eta && (
                     <Box mt={2} display="flex" alignItems="center">
                         <AccessTimeIcon sx={{ mr: 1 }} color="action" />
-                        <Typography>ETA: {event.eta}</Typography>
+                        <Typography variant="body1">ETA: {event.eta}</Typography>
                     </Box>
                 )}
             </Paper>

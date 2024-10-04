@@ -33,11 +33,13 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { useApp } from '../contexts/AppContext';
 import { useApi } from '../hooks/useApi';
-import { updateUserProfile, getUserProfile, changePassword, deleteAccount } from '../services/api';
+import { userApi } from '../services/api/userApi';
 import { Theme } from '../types/types';
 import { UserProfile } from '../types/user';
 
 const SettingsScreen: React.FC = () => {
+    const { updateUserProfile, getUserProfile, changePassword, deleteAccount } = userApi;
+
     const { user, logout } = useAuth();
     const { theme, setTheme } = useApp();
     const [notificationPreferences, setNotificationPreferences] = useState({

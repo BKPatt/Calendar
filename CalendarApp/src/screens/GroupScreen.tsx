@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
     Container,
     Typography,
@@ -9,76 +9,166 @@ import {
     ListItemAvatar,
     Avatar,
     Button,
-    TextField,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
     CircularProgress,
     Divider,
-    Accordion,
-    AccordionSummary,
-    AccordionDetails,
+    Card,
+    CardHeader,
+    CardContent,
+    CardActions,
+    Collapse,
+    IconButton,
     Chip,
+    TextField,
+    InputAdornment,
+    Grid,
+    useTheme,
+    useMediaQuery,
 } from '@mui/material';
-import { useTheme } from '@mui/system';
 import {
     Group as GroupIcon,
     Add as AddIcon,
     ExpandMore as ExpandMoreIcon,
+    ExpandLess as ExpandLessIcon,
     Person as PersonIcon,
     Event as EventIcon,
+    Search as SearchIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useApi } from '../hooks/useApi';
-import { getGroups, createGroup, getGroupEvents } from '../services/api';
+import { groupApi } from '../services/api/groupApi';
 import { Group } from '../types/group';
 import { Events } from '../types/event';
 import { formatDate } from '../utils/dateHelpers';
+import GroupForm from '../components/Group/GroupForm';
+
+interface PaginatedResponse<T> {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: T;
+}
 
 const GroupScreen: React.FC = () => {
+    const { getGroups, createGroup, getGroupEvents } = groupApi;
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const navigate = useNavigate();
     const { user } = useAuth();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [newGroupName, setNewGroupName] = useState('');
-    const [newGroupDescription, setNewGroupDescription] = useState('');
-    const [expandedGroup, setExpandedGroup] = useState<number | false>(false);
+    const [expandedGroupId, setExpandedGroupId] = useState<number | null>(null);
+    const [groups, setGroups] = useState<Group[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [events, setEvents] = useState<Events[]>([]);
+    const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const { data: groups, isLoading, error, refetch } = useApi<Group[]>(getGroups);
 
-    const handleCreateGroup = async () => {
-        if (newGroupName.trim() && user) {
-            try {
-                await createGroup({
-                    name: newGroupName.trim(),
-                    description: newGroupDescription.trim(),
-                    admin: user.id,
+    const fetchGroups = useCallback(async (pageNumber: number) => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const params = { page: pageNumber.toString() };
+            const response = await getGroups(params);
+
+            if (response && 'results' in response && Array.isArray(response.results)) {
+                const paginatedResponse = response as PaginatedResponse<Group[][]>;
+                const newGroups: Group[] = paginatedResponse.results.flat();
+
+                setGroups((prevGroups) => {
+                    const updatedGroups = pageNumber === 1 ? newGroups : [...prevGroups, ...newGroups];
+                    return updatedGroups;
                 });
-                setIsDialogOpen(false);
-                setNewGroupName('');
-                setNewGroupDescription('');
-                refetch();
-            } catch (error) {
-                console.error('Error creating group:', error);
+
+                setHasMore(!!paginatedResponse.next);
+            } else {
+                console.error('Invalid data format:', response);
+                throw new Error('Invalid data format');
             }
+        } catch (err) {
+            console.error('Error loading groups:', err);
+            setError('Error loading groups');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [getGroups]);
+
+    useEffect(() => {
+        fetchGroups(page);
+    }, [page, fetchGroups]);
+
+    const handleCreateGroup = () => {
+        setIsDialogOpen(true);
+    };
+
+    const handleExpandClick = (groupId: number) => {
+        setExpandedGroupId(expandedGroupId === groupId ? null : groupId);
+    };
+
+    const loadMoreGroups = () => {
+        if (hasMore) {
+            setPage((prevPage) => prevPage + 1);
         }
     };
 
-    const handleAccordionChange = useCallback((groupId: number) => (event: React.SyntheticEvent, isExpanded: boolean) => {
-        setExpandedGroup(isExpanded ? groupId : false);
-    }, []);
+    const handleGroupCreated = () => {
+        setIsDialogOpen(false);
+        setPage(1);
+        setGroups([]);
+        fetchGroups(1);
+    };
+
+    const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchTerm(event.target.value);
+    };
+
+    const filteredGroups = groups.filter((group) =>
+        group.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     const GroupEvents: React.FC<{ groupId: number }> = ({ groupId }) => {
-        const { data: events, isLoading, error } = useApi<Events[]>(() => getGroupEvents(groupId));
+        const [events, setEvents] = useState<Events[]>([]);
+        const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+        const [error, setError] = useState<string | null>(null);
 
-        if (isLoading) return <CircularProgress size={24} />;
-        if (error) return <Typography color="error">Error loading events</Typography>;
+        useEffect(() => {
+            const fetchGroupEvents = async () => {
+                setIsLoadingEvents(true);
+                try {
+                    const response = await getGroupEvents(groupId);
+                    setEvents(response.data || []);
+                } catch (err) {
+                    setError('Error loading events');
+                } finally {
+                    setIsLoadingEvents(false);
+                }
+            };
+
+            fetchGroupEvents();
+        }, [groupId]);
+
+        if (isLoadingEvents) {
+            return (
+                <Box display="flex" justifyContent="center" mt={2}>
+                    <CircularProgress size={24} />
+                </Box>
+            );
+        }
+
+        if (error) {
+            return (
+                <Typography color="error" align="center" mt={2}>
+                    {error}
+                </Typography>
+            );
+        }
 
         return (
             <List>
-                {events && events.length > 0 ? (
+                {events.length > 0 ? (
                     events.map((event) => (
                         <ListItem key={event.id} sx={{ pl: 4 }}>
                             <ListItemAvatar>
@@ -93,127 +183,148 @@ const GroupScreen: React.FC = () => {
                         </ListItem>
                     ))
                 ) : (
-                    <ListItem sx={{ pl: 4 }}>
-                        <ListItemText primary="No upcoming events" />
-                    </ListItem>
+                    <Typography align="center" mt={2}>
+                        No upcoming events
+                    </Typography>
                 )}
             </List>
         );
     };
 
-    if (isLoading) return <CircularProgress />;
-    if (error) return <Typography color="error">Error: {error}</Typography>;
-
     return (
         <Container maxWidth="md">
             <Box my={4}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="h4" component="h1">
-                        My Groups
-                    </Typography>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={<AddIcon />}
-                        onClick={() => setIsDialogOpen(true)}
-                    >
-                        Create Group
-                    </Button>
-                </Box>
-                {groups && groups.length > 0 ? (
-                    groups.map((group) => (
-                        <Accordion
-                            key={group.id}
-                            expanded={expandedGroup === group.id}
-                            onChange={handleAccordionChange(group.id)}
+                <Grid container spacing={2} alignItems="center" mb={3}>
+                    <Grid item xs={12} sm={6}>
+                        <Typography variant="h4" component="h1">
+                            My Groups
+                        </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6} container justifyContent="flex-end">
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<AddIcon />}
+                            onClick={handleCreateGroup}
                         >
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Box display="flex" alignItems="center" width="100%">
-                                    <Avatar sx={{ bgcolor: theme.palette.primary.main, mr: 2 }}>
-                                        <GroupIcon />
-                                    </Avatar>
-                                    <Box flexGrow={1}>
-                                        <Typography variant="h6">{group.name}</Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            {group.members.length} members
-                                        </Typography>
-                                    </Box>
-                                    <Chip
-                                        label={group.isPublic ? 'Public' : 'Private'}
-                                        color={group.isPublic ? 'success' : 'default'}
-                                        size="small"
-                                    />
-                                </Box>
-                            </AccordionSummary>
-                            <AccordionDetails>
-                                <Typography paragraph>{group.description}</Typography>
-                                <Divider />
-                                <Typography variant="subtitle1" mt={2} mb={1}>
-                                    Members:
-                                </Typography>
-                                <List>
-                                    {group.members.map((member) => (
-                                        <ListItem key={member.id}>
-                                            <ListItemAvatar>
-                                                <Avatar>
-                                                    <PersonIcon />
-                                                </Avatar>
-                                            </ListItemAvatar>
-                                            <ListItemText
-                                                primary={`${member.firstName} ${member.lastName}`}
-                                                secondary={member.email}
-                                            />
-                                        </ListItem>
-                                    ))}
-                                </List>
-                                <Divider />
-                                <Typography variant="subtitle1" mt={2} mb={1}>
-                                    Upcoming Events:
-                                </Typography>
-                                <GroupEvents groupId={group.id} />
-                                <Box mt={2}>
+                            Create Group
+                        </Button>
+                    </Grid>
+                </Grid>
+                <TextField
+                    fullWidth
+                    placeholder="Search groups..."
+                    value={searchTerm}
+                    onChange={handleSearch}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon />
+                            </InputAdornment>
+                        ),
+                    }}
+                    sx={{ mb: 3 }}
+                />
+                {isLoading && page === 1 ? (
+                    <Box display="flex" justifyContent="center" mt={4}>
+                        <CircularProgress />
+                    </Box>
+                ) : error ? (
+                    <Typography color="error" align="center" mt={4}>
+                        {error}
+                    </Typography>
+                ) : filteredGroups.length > 0 ? (
+                    <>
+                        {filteredGroups.map((group) => (
+                            <Card key={group.id} sx={{ mb: 3 }}>
+                                <CardHeader
+                                    avatar={
+                                        <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                                            <GroupIcon />
+                                        </Avatar>
+                                    }
+                                    action={
+                                        <Chip
+                                            label={group.is_public ? 'Public' : 'Private'}
+                                            color={group.is_public ? 'success' : 'default'}
+                                            size="small"
+                                        />
+                                    }
+                                    title={group.name}
+                                    subheader={`${group.members.length} members`}
+                                />
+                                <CardActions disableSpacing>
+                                    <IconButton
+                                        onClick={() => handleExpandClick(group.id)}
+                                        aria-expanded={expandedGroupId === group.id}
+                                        aria-label="show more"
+                                    >
+                                        {expandedGroupId === group.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                    </IconButton>
                                     <Button
                                         variant="outlined"
+                                        size="small"
                                         onClick={() => navigate(`/groups/${group.id}`)}
+                                        sx={{ ml: 'auto' }}
                                     >
-                                        View Full Group Details
+                                        View Details
                                     </Button>
-                                </Box>
-                            </AccordionDetails>
-                        </Accordion>
-                    ))
+                                </CardActions>
+                                <Collapse in={expandedGroupId === group.id} timeout="auto" unmountOnExit>
+                                    <CardContent>
+                                        <Typography paragraph>{group.description || 'No description provided'}</Typography>
+                                        <Divider sx={{ my: 2 }} />
+                                        <Typography variant="subtitle1" gutterBottom>
+                                            Members:
+                                        </Typography>
+                                        <List>
+                                            {group.members.map((member) => (
+                                                <ListItem key={member.id}>
+                                                    <ListItemAvatar>
+                                                        <Avatar>
+                                                            <PersonIcon />
+                                                        </Avatar>
+                                                    </ListItemAvatar>
+                                                    <ListItemText
+                                                        primary={`${member.username}`}
+                                                        secondary={member.email}
+                                                    />
+                                                </ListItem>
+                                            ))}
+                                        </List>
+                                        <Divider sx={{ my: 2 }} />
+                                        <Typography variant="subtitle1" gutterBottom>
+                                            Upcoming Events:
+                                        </Typography>
+                                        <GroupEvents groupId={group.id} />
+                                    </CardContent>
+                                </Collapse>
+                            </Card>
+                        ))}
+                        {hasMore && (
+                            <Box display="flex" justifyContent="center" mt={3}>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={loadMoreGroups}
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? 'Loading...' : 'Load More'}
+                                </Button>
+                            </Box>
+                        )}
+                    </>
                 ) : (
-                    <Typography>You are not a member of any groups yet.</Typography>
+                    <Typography align="center" mt={4}>
+                        No groups found.
+                    </Typography>
                 )}
             </Box>
-            <Dialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)}>
-                <DialogTitle>Create New Group</DialogTitle>
-                <DialogContent>
-                    <TextField
-                        autoFocus
-                        margin="dense"
-                        label="Group Name"
-                        fullWidth
-                        value={newGroupName}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewGroupName(e.target.value)}
-                    />
-                    <TextField
-                        margin="dense"
-                        label="Description"
-                        fullWidth
-                        multiline
-                        rows={3}
-                        value={newGroupDescription}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewGroupDescription(e.target.value)}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleCreateGroup} color="primary">
-                        Create
-                    </Button>
-                </DialogActions>
-            </Dialog>
+            <GroupForm
+                open={isDialogOpen}
+                onClose={() => setIsDialogOpen(false)}
+                onGroupCreated={handleGroupCreated}
+            />
         </Container>
     );
 };

@@ -1,16 +1,21 @@
 from rest_framework import viewsets, permissions, status, filters
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils import timezone
+from rest_framework.views import APIView
 
 from ..models import Group, CustomUser, Invitation, Availability, Event
 from ..serializers import GroupSerializer, InvitationSerializer, EventSerializer
 from ..group_management import GroupInvitationManager
 from ..utils import find_common_free_time
 
+class GroupPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class GroupViewSet(viewsets.ModelViewSet):
     queryset = Group.objects.all()
@@ -18,14 +23,41 @@ class GroupViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'description']
+    pagination_class = GroupPagination
 
     def get_queryset(self):
-        return Group.objects.filter(Q(members=self.request.user) | Q(is_public=True))
+        user_id = self.request.query_params.get('user_id', None)
+        
+        if user_id:
+            try:
+                user_id = int(user_id)
+                user = get_object_or_404(CustomUser, pk=user_id)
+            except ValueError:
+                return Group.objects.none()
+        else:
+            user = self.request.user
+
+        return Group.objects.filter(Q(members=user) | Q(is_public=True))
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def get_permissions(self):
         if self.action in ['update', 'destroy']:
             return [permissions.IsAuthenticated()]
         return [permissions.IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        group = serializer.save(admin=self.request.user)
+        group.members.add(self.request.user)
+        group.save()
 
     @action(detail=True, methods=['post'])
     def join(self, request, pk=None):
@@ -56,7 +88,6 @@ class GroupViewSet(viewsets.ModelViewSet):
         invitation = get_object_or_404(Invitation, pk=invitation_id)
         GroupInvitationManager.process_invitation_response(invitation, response)
         return Response({'status': 'Invitation response processed'})
-
 
 class GroupScheduleView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -154,8 +185,10 @@ class GroupListView(APIView):
         public_groups_serializer = GroupSerializer(public_groups, many=True)
 
         return Response({
-            'user_groups': user_groups_serializer.data,
-            'public_groups': public_groups_serializer.data
+            'data': {
+                'count': len(user_groups_serializer.data) + len(public_groups_serializer.data),
+                'results': user_groups_serializer.data + public_groups_serializer.data
+            }
         }, status=status.HTTP_200_OK)
 
 
