@@ -61,7 +61,7 @@ const Event: React.FC<EventProps> = ({ event, onClick }) => {
                 <Box display="flex" alignItems="center">
                     <AccessTime fontSize="small" color="action" />
                     <Typography variant="body2" ml={1}>
-                        {format(new Date(event.startTime), 'h:mm a')} - {format(new Date(event.endTime), 'h:mm a')}
+                        {format(new Date(event.start_time), 'h:mm a')} - {format(new Date(event.end_time), 'h:mm a')}
                     </Typography>
                 </Box>
                 {event.location && (

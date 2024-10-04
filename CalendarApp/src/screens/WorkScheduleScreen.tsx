@@ -19,9 +19,11 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
-import { getWorkSchedules, createWorkSchedule, updateWorkSchedule } from '../services/api';
+import { scheduleApi } from '../services/api/scheduleApi';
 
 const WorkScheduleScreen: React.FC = () => {
+    const { getWorkSchedules, createWorkSchedule, updateWorkSchedule } = scheduleApi;
+
     const { user } = useAuth();
     const { data: schedules, isLoading, error, refetch } = useApi(getWorkSchedules);
     const [selectedDay, setSelectedDay] = useState<number | null>(null);

@@ -20,10 +20,12 @@ import { Group as GroupIcon, Add as AddIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
-import { getGroups, createGroup } from '../../services/api';
+import { groupApi } from '../../services/api/groupApi';
 import { Group } from '../../types/group';
 
 const GroupList: React.FC = () => {
+    const { getGroups, createGroup } = groupApi;
+
     const { user } = useAuth();
     const navigate = useNavigate();
     const [isDialogOpen, setIsDialogOpen] = useState(false);

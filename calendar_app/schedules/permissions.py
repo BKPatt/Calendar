@@ -7,7 +7,6 @@ class IsEventOwnerOrShared(permissions.BasePermission):
     """
 
     def has_object_permission(self, request, view, obj):
-        # Allow access if the event is created by the user or shared with the user
         if isinstance(obj, Event):
             return obj.created_by == request.user or request.user in obj.shared_with.all()
         return False
@@ -19,10 +18,9 @@ class IsGroupMember(permissions.BasePermission):
     """
 
     def has_object_permission(self, request, view, obj):
-        # Only group members can view or access group schedules and events
         if isinstance(obj, Group):
             return request.user in obj.members.all()
-        elif hasattr(obj, 'group'):  # Check if the object has a group and the user is a member of it
+        elif hasattr(obj, 'group'):
             return obj.group and request.user in obj.group.members.all()
         return False
 
@@ -33,7 +31,6 @@ class CanShareEvent(permissions.BasePermission):
     """
 
     def has_object_permission(self, request, view, obj):
-        # Only event creators can share events
         if isinstance(obj, Event):
             return obj.created_by == request.user
         return False
@@ -45,7 +42,6 @@ class CanEditGroup(permissions.BasePermission):
     """
 
     def has_object_permission(self, request, view, obj):
-        # Only group admin can modify group details or membership
         if isinstance(obj, Group):
             return obj.admin == request.user
         return False
@@ -57,7 +53,6 @@ class CanViewGroupEvents(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        # Check if the user is a member of the group based on the group_id from the URL
         group_id = view.kwargs.get('group_id')
         if group_id:
             group = Group.objects.filter(id=group_id).first()
@@ -71,9 +66,7 @@ class IsAuthenticatedOrReadOnly(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        # Allow read-only permissions for safe methods (GET, HEAD, OPTIONS)
         if request.method in permissions.SAFE_METHODS:
             return True
         
-        # Write permissions are allowed only to authenticated users
         return request.user and request.user.is_authenticated

@@ -14,7 +14,7 @@ import { Edit, Delete, Event as EventIcon } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { Events } from '../../types/event';
 import { useApi } from '../../hooks/useApi';
-import { getEvents, deleteEvent } from '../../services/api';
+import { eventApi } from '../../services/api/eventApi';
 import EventForm from './EventForm';
 
 const EventListContainer = styled(Box)(({ theme }) => ({
@@ -30,10 +30,13 @@ const EventItem = styled(ListItem)(({ theme }) => ({
 }));
 
 const EventList: React.FC = () => {
+    const { getEvents, deleteEvent } = eventApi;
+
     const [events, setEvents] = useState<Events[]>([]);
     const [editingEvent, setEditingEvent] = useState<Events | null>(null);
 
     const { data, isLoading, error, refetch: fetchEvents } = useApi(getEvents);
+    const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
 
     useEffect(() => {
         fetchEvents();
@@ -44,6 +47,15 @@ const EventList: React.FC = () => {
             setEvents(data);
         }
     }, [data]);
+
+    const handleCreateEvent = () => {
+        setIsCreateEventOpen(true);
+    };
+
+    const handleEventCreated = () => {
+        setIsCreateEventOpen(false);
+        // TODO: Refresh events list or handle post-event creation logic here
+    };
 
     const handleEditEvent = (event: Events) => {
         setEditingEvent(event);
@@ -75,9 +87,9 @@ const EventList: React.FC = () => {
         <EventListContainer>
             {editingEvent ? (
                 <EventForm
-                    event={editingEvent}
-                    onSubmit={handleEventSubmit}
-                    onCancel={handleEventCancel}
+                    open={isCreateEventOpen}
+                    onClose={() => setIsCreateEventOpen(false)}
+                    onEventCreated={handleEventCreated}
                 />
             ) : (
                 <>
@@ -93,7 +105,7 @@ const EventList: React.FC = () => {
                                     secondary={
                                         <>
                                             <Typography component="span" variant="body2" color="text.primary">
-                                                {format(new Date(event.startTime), 'PPp')} - {format(new Date(event.endTime), 'PPp')}
+                                                {format(new Date(event.start_time), 'PPp')} - {format(new Date(event.end_time), 'PPp')}
                                             </Typography>
                                             <br />
                                             {event.location && (
@@ -109,7 +121,7 @@ const EventList: React.FC = () => {
                                     <IconButton edge="end" aria-label="edit" onClick={() => handleEditEvent(event)}>
                                         <Edit />
                                     </IconButton>
-                                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteEvent(event.id)}>
+                                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteEvent(event.id!)}>
                                         <Delete />
                                     </IconButton>
                                 </ListItemSecondaryAction>

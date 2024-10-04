@@ -16,7 +16,6 @@ class UserPreferencesManager:
         except UserProfile.DoesNotExist:
             raise ValidationError("User profile not found.")
 
-        # Update the user preferences with provided data
         for key, value in preferences.items():
             if hasattr(user_profile, key):
                 setattr(user_profile, key, value)
@@ -38,7 +37,6 @@ class UserPreferencesManager:
         except UserProfile.DoesNotExist:
             raise ValidationError("User profile not found.")
 
-        # Create a dictionary of user preferences
         preferences = {
             "bio": user_profile.bio,
             "phone_number": user_profile.phone_number,

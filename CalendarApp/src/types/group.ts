@@ -9,7 +9,7 @@ export interface Group {
     createdAt: string;
     updatedAt: string;
     admin: number;
-    isPublic: boolean;
+    is_public: boolean;
     maxMembers: number;
     groupPicture?: string;
     tags: Tag[];

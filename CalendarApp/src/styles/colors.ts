@@ -148,7 +148,6 @@ export const darkPalette: PaletteOptions = {
     },
 };
 
-// Custom colors for your app
 export const customColors = {
     eventColors: [
         '#FF5252',

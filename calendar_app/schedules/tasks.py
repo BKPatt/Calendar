@@ -24,14 +24,12 @@ def send_event_reminder(event_id):
         recipients = [event.created_by] + list(event.shared_with.all())
 
         for recipient in recipients:
-            # In-app notification
             Notification.objects.create(
                 recipient=recipient,
                 notification_type='reminder',
                 message=f"Reminder: {event.title} starts at {event.start_time.strftime('%I:%M %p')}."
             )
 
-            # Email notification
             if recipient.userprofile.email_notifications:
                 send_mail(
                     f"Event Reminder: {event.title}",
@@ -41,7 +39,6 @@ def send_event_reminder(event_id):
                     fail_silently=False,
                 )
 
-            # Push notification
             if recipient.userprofile.push_notifications:
                 device_tokens = UserDeviceToken.objects.filter(user=recipient, is_active=True)
                 for device_token in device_tokens:
@@ -168,7 +165,6 @@ def sync_google_calendar(user, token):
     try:
         service = build('calendar', 'v3', credentials=credentials)
         
-        # Call the Calendar API
         now = timezone.now().isoformat()
         events_result = service.events().list(calendarId='primary', timeMin=now,
                                               maxResults=100, singleEvents=True,
@@ -222,7 +218,7 @@ def check_eta_updates():
     current_time = timezone.now()
     upcoming_events = Event.objects.filter(
         start_time__gt=current_time,
-        start_time__lte=current_time + timedelta(hours=1)  # Check events starting in the next hour
+        start_time__lte=current_time + timedelta(hours=1)
     )
     
     for event in upcoming_events:
@@ -233,7 +229,6 @@ def check_eta_updates():
                     event.eta = eta
                     event.save()
                     
-                    # Notify other attendees about the ETA update
                     for other_attendee in event.shared_with.exclude(id=attendee.id):
                         Notification.objects.create(
                             recipient=other_attendee,
@@ -242,7 +237,6 @@ def check_eta_updates():
                         )
 
 def calculate_eta(start_location, end_location):
-    # Use Google Maps Directions API to calculate ETA
     api_key = settings.GOOGLE_MAPS_API_KEY
     url = f"https://maps.googleapis.com/maps/api/directions/json?origin={start_location}&destination={end_location}&key={api_key}"
     
@@ -252,7 +246,7 @@ def calculate_eta(start_location, end_location):
     if data['status'] == 'OK':
         route = data['routes'][0]
         leg = route['legs'][0]
-        duration = leg['duration']['value']  # Duration in seconds
+        duration = leg['duration']['value']
         eta = timezone.now() + timedelta(seconds=duration)
         return eta
     else:

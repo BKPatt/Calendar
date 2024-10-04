@@ -4,13 +4,13 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
-
+from matplotlib.dates import rrule
 
 class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
 
 class UserProfile(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='userprofile')
     bio = models.TextField(blank=True)
     profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
     phone_number = models.CharField(max_length=15, blank=True)
@@ -29,7 +29,7 @@ class UserProfile(models.Model):
     external_calendar_token = models.CharField(max_length=255, blank=True, null=True)
     last_known_location = models.CharField(max_length=255, blank=True, null=True)
     location_sharing_enabled = models.BooleanField(default=False)
-    work_schedule_preferences = models.JSONField(default=dict, blank=True)  # New field to store work schedule preferences
+    work_schedule_preferences = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         return f"{self.user.username}'s profile"
@@ -128,10 +128,6 @@ class RecurringSchedule(models.Model):
         return events
 
     def clean(self):
-        if self.start_time >= self.end_time:
-            raise ValidationError("End time must be after start time")
-        if self.end_date and self.start_date > self.end_date:
-            raise ValidationError("End date must be after start date")
         if self.frequency == 'WEEKLY' and not self.days_of_week:
             raise ValidationError("Days of week must be specified for weekly recurrence")
         if self.frequency == 'MONTHLY' and self.day_of_month is None:
@@ -174,6 +170,7 @@ class Event(models.Model):
         ('meeting', 'Meeting'),
         ('appointment', 'Appointment'),
         ('reminder', 'Reminder'),
+        ('work', 'Work'),
         ('other', 'Other'),
     )
 
@@ -182,7 +179,7 @@ class Event(models.Model):
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     location = models.CharField(max_length=200, blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_events')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_events', null=False)
     shared_with = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='shared_events', blank=True)
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True, related_name='events')
     recurring = models.BooleanField(default=False)
@@ -195,6 +192,10 @@ class Event(models.Model):
     recurring_schedule = models.ForeignKey(RecurringSchedule, on_delete=models.SET_NULL, null=True, blank=True, related_name='events')
     category = models.ForeignKey(EventCategory, on_delete=models.SET_NULL, null=True, blank=True)
     is_archived = models.BooleanField(default=False)
+    is_all_day = models.BooleanField(default=False)
+    is_recurring = models.BooleanField(default=False)
+    recurrence_rule = models.JSONField(null=True, blank=True)
+    recurrence_end_date = models.DateTimeField(null=True, blank=True)
 
     def update_eta(self, new_eta):
         if new_eta <= self.start_time:
@@ -209,6 +210,34 @@ class Event(models.Model):
                 )
         else:
             raise ValidationError("ETA cannot be after the event start time.")
+
+    def generate_recurring_events(self, end_date):
+        if not self.is_recurring or not self.recurrence_rule:
+            return []
+
+        events = []
+        current_date = self.start_time
+        rule = rrule.rrulestr(self.recurrence_rule)
+
+        while current_date <= end_date:
+            if self.recurrence_end_date and current_date > self.recurrence_end_date:
+                break
+
+            new_event = Event(
+                title=self.title,
+                description=self.description,
+                start_time=current_date,
+                end_time=current_date + (self.end_time - self.start_time),
+                location=self.location,
+                created_by=self.created_by,
+                group=self.group,
+                is_recurring=False
+            )
+            events.append(new_event)
+
+            current_date = rule.after(current_date, inc=False)
+
+        return events
 
     def clean(self):
         if self.start_time >= self.end_time:
@@ -255,7 +284,6 @@ class WorkSchedule(models.Model):
         """
         if date < self.effective_date or (self.end_date and date > self.end_date):
             raise ValidationError("Date is outside the effective range for this schedule.")
-        # Here, you can add logic to modify the schedule or add exceptions for specific dates.
 
     def clean(self):
         if self.start_time >= self.end_time:

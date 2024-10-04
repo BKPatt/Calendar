@@ -18,7 +18,7 @@ import { Event as EventIcon, Close as CloseIcon, Add as AddIcon } from '@mui/ico
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { Events } from '../../types/event';
-import EventCreateScreen from '../../dialogs/EventCreateScreen';
+import EventForm from './EventForm';
 
 interface DayEventsDialogProps {
     open: boolean;
@@ -41,7 +41,7 @@ const DayEventsDialog: React.FC<DayEventsDialogProps> = ({ open, onClose, date, 
 
     const handleEventCreated = () => {
         setIsCreateEventOpen(false);
-        // You might want to refresh the events list here
+        // TODO: Refresh events list or handle post-event creation logic here
     };
 
     return (
@@ -62,7 +62,7 @@ const DayEventsDialog: React.FC<DayEventsDialogProps> = ({ open, onClose, date, 
                         {events.map((event) => (
                             <React.Fragment key={event.id}>
                                 <ListItem
-                                    onClick={() => handleEventClick(event.id)}
+                                    onClick={() => handleEventClick(event.id!)}
                                     sx={{
                                         cursor: 'pointer',
                                         '&:hover': {
@@ -80,7 +80,7 @@ const DayEventsDialog: React.FC<DayEventsDialogProps> = ({ open, onClose, date, 
                                         secondary={
                                             <>
                                                 <Typography component="span" variant="body2" color="text.primary">
-                                                    {format(new Date(event.startTime), 'h:mm a')} - {format(new Date(event.endTime), 'h:mm a')}
+                                                    {format(new Date(event.start_time), 'h:mm a')} - {format(new Date(event.end_time), 'h:mm a')}
                                                 </Typography>
                                                 {event.location && (
                                                     <>
@@ -114,7 +114,7 @@ const DayEventsDialog: React.FC<DayEventsDialogProps> = ({ open, onClose, date, 
                     </Button>
                 </Box>
             </DialogContent>
-            <EventCreateScreen
+            <EventForm
                 open={isCreateEventOpen}
                 onClose={() => setIsCreateEventOpen(false)}
                 onEventCreated={handleEventCreated}

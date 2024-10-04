@@ -19,7 +19,6 @@ class GroupInvitationManager:
         if user in group.members.all():
             raise ValidationError("User is already a member of the group.")
 
-        # Create or retrieve an existing invitation for the user
         invitation, created = Invitation.objects.get_or_create(
             sender=group.admin,
             recipient=user,
@@ -29,7 +28,6 @@ class GroupInvitationManager:
         )
 
         if created:
-            # Notify the user about the group invitation via notification service
             NotificationManager().send_event_notification(invitation)
             return invitation
         else:
@@ -49,23 +47,19 @@ class GroupInvitationManager:
         if invitation.status != 'pending':
             raise ValidationError("Invitation is no longer pending.")
 
-        # Update the invitation status and record the response time
         invitation.status = response
         invitation.responded_at = timezone.now()
         invitation.save()
 
         if response == 'accepted':
-            # Add the user to the group if the invitation is accepted
             group = invitation.group
             group.members.add(invitation.recipient)
             group.save()
 
-            # Notify the group admin and other members about the acceptance
             NotificationManager().send_event_notification(
                 invitation, f"User {invitation.recipient.username} accepted the invitation to join the group."
             )
         else:
-            # Notify about the decline of the invitation
             NotificationManager().send_event_notification(
                 invitation, f"User {invitation.recipient.username} declined the invitation."
             )

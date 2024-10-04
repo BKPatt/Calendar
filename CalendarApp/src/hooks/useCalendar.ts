@@ -38,7 +38,7 @@ export function useCalendar(): UseCalendarReturn {
 
     const getEventsForDay = useCallback((date: Date, events: Events[]) => {
         const dateString = formatDate(date);
-        return events.filter(event => event.startTime.startsWith(dateString));
+        return events.filter(event => event.start_time.startsWith(dateString));
     }, [formatDate]);
 
     return {

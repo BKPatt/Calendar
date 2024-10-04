@@ -99,7 +99,7 @@ const CalendarGlance: React.FC<CalendarGlanceProps> = ({ events }) => {
 
     const getEventsForDate = (date: Date) => {
         return events.filter((event) =>
-            isSameDay(new Date(event.startTime), date)
+            isSameDay(new Date(event.start_time), date)
         );
     };
 
