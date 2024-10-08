@@ -91,7 +91,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onMenuClick }) => {
                                 </ListItemIcon>
                                 <ListItemText primary="Profile" />
                             </MenuItem>
-                            <MenuItem onClick={handleClose}>
+                            <MenuItem onClick={handleClose} component="a" href="/settings">
                                 <ListItemIcon>
                                     <SettingsIcon fontSize="small" />
                                 </ListItemIcon>

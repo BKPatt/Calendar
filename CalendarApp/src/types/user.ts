@@ -1,3 +1,5 @@
+import { DateFormat, Language, Theme, TimeFormat } from "./types";
+
 export interface User {
     id: number;
     username: string;
@@ -26,10 +28,24 @@ export interface UserProfile extends User {
     notificationPreferences: NotificationPreferences;
     lastLoginPlatform?: 'web' | 'ios' | 'android';
     profileComplete?: boolean;
+    settings: UserSettings;
 }
 
 export interface RegistrationData {
     username: string;
     email: string;
     password: string;
+}
+
+export interface UserSettings {
+    notificationPreferences: {
+        email: boolean;
+        push: boolean;
+        inApp: boolean;
+    };
+    theme: Theme;
+    language: Language;
+    timeFormat: TimeFormat;
+    dateFormat: DateFormat;
+    defaultView: 'month' | 'week' | 'day';
 }

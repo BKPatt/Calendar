@@ -17,6 +17,8 @@ import LoadingSpinner from './components/common/LoadingSpinner';
 import PublicRoute from './auth/PublicRoute';
 import AppHeader from './AppHeader';
 import NavTray from './NavTray';
+import SettingsScreen from './screens/SettingsScreen';
+import { AppProvider } from './contexts/AppContext';
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -37,25 +39,28 @@ const App: React.FC = () => {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
-        <Router>
-          <div style={{ display: 'flex', position: 'relative' }}>
-            <AppHeader onMenuClick={toggleDrawer} />
-            <NavTray isDrawerOpen={isDrawerOpen} toggleDrawer={toggleDrawer} />  {/* Use NavTray component */}
+        <AppProvider>
+          <Router>
+            <div style={{ display: 'flex', position: 'relative' }}>
+              <AppHeader onMenuClick={toggleDrawer} />
+              <NavTray isDrawerOpen={isDrawerOpen} toggleDrawer={toggleDrawer} />
 
-            <main style={{ flexGrow: 1, padding: '80px 24px 24px' }}>
-              <Routes>
-                <Route path="/signin" element={<PublicRoute><SignIn /></PublicRoute>} />
-                <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
-                <Route path="/" element={<PrivateRoute><HomeScreen /></PrivateRoute>} />
-                <Route path="/calendar" element={<PrivateRoute><CalendarScreen /></PrivateRoute>} />
-                <Route path="/groups" element={<PrivateRoute><GroupScreen /></PrivateRoute>} />
-                <Route path="/profile" element={<PrivateRoute><ProfileScreen /></PrivateRoute>} />
-                <Route path="/events/:eventId" element={<PrivateRoute><EventScreen /></PrivateRoute>} />
-                <Route path="/events" element={<PrivateRoute><UpcomingEventsScreen /></PrivateRoute>} />
-              </Routes>
-            </main>
-          </div>
-        </Router>
+              <main style={{ flexGrow: 1, padding: '80px 24px 24px' }}>
+                <Routes>
+                  <Route path="/signin" element={<PublicRoute><SignIn /></PublicRoute>} />
+                  <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
+                  <Route path="/" element={<PrivateRoute><HomeScreen /></PrivateRoute>} />
+                  <Route path="/calendar" element={<PrivateRoute><CalendarScreen /></PrivateRoute>} />
+                  <Route path="/groups" element={<PrivateRoute><GroupScreen /></PrivateRoute>} />
+                  <Route path="/profile" element={<PrivateRoute><ProfileScreen /></PrivateRoute>} />
+                  <Route path="/settings" element={<PrivateRoute><SettingsScreen /></PrivateRoute>} />
+                  <Route path="/events/:eventId" element={<PrivateRoute><EventScreen /></PrivateRoute>} />
+                  <Route path="/events" element={<PrivateRoute><UpcomingEventsScreen /></PrivateRoute>} />
+                </Routes>
+              </main>
+            </div>
+          </Router>
+        </AppProvider>
       </AuthProvider>
     </ThemeProvider>
   );
