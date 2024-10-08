@@ -12,7 +12,6 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    TextField,
 } from '@mui/material';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -27,18 +26,18 @@ const WorkScheduleScreen: React.FC = () => {
     const { user } = useAuth();
     const { data: schedules, isLoading, error, refetch } = useApi(getWorkSchedules);
     const [selectedDay, setSelectedDay] = useState<number | null>(null);
-    const [startTime, setStartTime] = useState<Date | null>(null);
-    const [endTime, setEndTime] = useState<Date | null>(null);
+    const [start_time, setstart_time] = useState<Date | null>(null);
+    const [end_time, setend_time] = useState<Date | null>(null);
 
     const handleUpdateSchedule = () => {
-        if (selectedDay !== null && startTime && endTime && user) {
+        if (selectedDay !== null && start_time && end_time && user) {
             const updateScheduleAsync = async () => {
                 try {
                     const existingSchedule = schedules?.find(s => s.dayOfWeek === selectedDay);
                     const scheduleData = {
                         dayOfWeek: selectedDay,
-                        startTime: startTime.toTimeString().slice(0, 5),
-                        endTime: endTime.toTimeString().slice(0, 5),
+                        start_time: start_time.toTimeString().slice(0, 5),
+                        end_time: end_time.toTimeString().slice(0, 5),
                         isRecurring: true,
                         userId: user.id,
                     };
@@ -80,7 +79,7 @@ const WorkScheduleScreen: React.FC = () => {
                         >
                             <ListItemText
                                 primary={day}
-                                secondary={schedule ? `${schedule.startTime} - ${schedule.endTime}` : 'Not set'}
+                                secondary={schedule ? `${schedule.start_time} - ${schedule.end_time}` : 'Not set'}
                             />
                         </ListItem>
                     );
@@ -93,15 +92,15 @@ const WorkScheduleScreen: React.FC = () => {
                         <Box my={2}>
                             <TimePicker
                                 label="Start Time"
-                                value={startTime}
-                                onChange={(newValue) => setStartTime(newValue)}
+                                value={start_time}
+                                onChange={(newValue) => setstart_time(newValue)}
                             />
                         </Box>
                         <Box my={2}>
                             <TimePicker
                                 label="End Time"
-                                value={endTime}
-                                onChange={(newValue) => setEndTime(newValue)}
+                                value={end_time}
+                                onChange={(newValue) => setend_time(newValue)}
                             />
                         </Box>
                     </LocalizationProvider>

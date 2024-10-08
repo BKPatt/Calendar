@@ -1,4 +1,4 @@
-import { format, parseISO, isValid, differenceInMinutes, addMinutes } from 'date-fns';
+import { format, parseISO, isValid, differenceInMinutes, addMinutes, differenceInSeconds } from 'date-fns';
 
 /**
  * Format a date string to a specified format
@@ -19,6 +19,46 @@ export const formatDate = (dateString: string, formatString: string = 'yyyy-MM-d
 export const getDayOfWeek = (dateString: string): number => {
     const date = parseISO(dateString);
     return isValid(date) ? date.getDay() : -1;
+};
+
+/**
+ * Calculate the time difference between two dates and return a human-readable string
+ * @param date1 - first date
+ * @param date2 - second date
+ * @returns human-readable time difference string
+ */
+export const getTimeDifference = (date1: Date, date2: Date): string => {
+    const diffInSeconds = Math.abs(differenceInSeconds(date2, date1));
+
+    const days = Math.floor(diffInSeconds / (3600 * 24));
+    const hours = Math.floor((diffInSeconds % (3600 * 24)) / 3600);
+    const minutes = Math.floor((diffInSeconds % 3600) / 60);
+
+    const parts = [];
+
+    if (days > 0) {
+        parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+    }
+    if (hours > 0) {
+        parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
+    }
+    if (minutes > 0) {
+        parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
+    }
+
+    if (parts.length === 0) {
+        return 'Less than a minute';
+    }
+
+    if (parts.length === 1) {
+        return parts[0];
+    }
+
+    if (parts.length === 2) {
+        return `${parts[0]} and ${parts[1]}`;
+    }
+
+    return `${parts[0]}, ${parts[1]}, and ${parts[2]}`;
 };
 
 /**
@@ -50,14 +90,14 @@ export const doDateRangesOverlap = (
  * @returns duration in minutes
  */
 export const calculateDuration = (start: string, end: string): number => {
-    const startDate = parseISO(start);
-    const endDate = parseISO(end);
+    const start_date = parseISO(start);
+    const end_date = parseISO(end);
 
-    if (!isValid(startDate) || !isValid(endDate)) {
+    if (!isValid(start_date) || !isValid(end_date)) {
         return 0;
     }
 
-    return differenceInMinutes(endDate, startDate);
+    return differenceInMinutes(end_date, start_date);
 };
 
 /**

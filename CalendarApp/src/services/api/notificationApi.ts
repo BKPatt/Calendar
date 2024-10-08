@@ -20,7 +20,7 @@ export const notificationApi = {
         try {
             return await getPaginatedResults<Notifications>('/notifications/', params);
         } catch (error) {
-            throw new Error(handleApiError(error));
+            throw new Error(handleApiError(error).join(', '));
         }
     },
 
@@ -29,11 +29,18 @@ export const notificationApi = {
      * @param notificationId - ID of the notification to mark as read
      * @returns Promise that resolves when the notification is marked as read
      */
-    markNotificationAsRead: async (notificationId: number): Promise<void> => {
+    markNotificationAsRead: async (notificationId: number): Promise<ApiResponse<void>> => {
         try {
             await apiRequest(`/notifications/${notificationId}/mark-read/`, 'POST');
+            return {
+                data: undefined,
+                message: 'Notification marked as read successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -41,11 +48,18 @@ export const notificationApi = {
      * Mark all notifications as read
      * @returns Promise that resolves when all notifications are marked as read
      */
-    markAllNotificationsAsRead: async (): Promise<void> => {
+    markAllNotificationsAsRead: async (): Promise<ApiResponse<void>> => {
         try {
             await apiRequest('/notifications/mark-all-read/', 'POST');
+            return {
+                data: undefined,
+                message: 'All notifications marked as read',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -54,11 +68,18 @@ export const notificationApi = {
      * @param notificationId - ID of the notification to delete
      * @returns Promise that resolves when the notification is deleted
      */
-    deleteNotification: async (notificationId: number): Promise<void> => {
+    deleteNotification: async (notificationId: number): Promise<ApiResponse<void>> => {
         try {
             await apiRequest(`/notifications/${notificationId}/`, 'DELETE');
+            return {
+                data: undefined,
+                message: 'Notification deleted successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -74,7 +95,10 @@ export const notificationApi = {
                 message: 'Unread notifications count fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: 0,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -91,7 +115,10 @@ export const notificationApi = {
                 message: 'Notification preferences updated successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as NotificationPreferences,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -107,7 +134,10 @@ export const notificationApi = {
                 message: 'Notification preferences fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as NotificationPreferences,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -124,7 +154,10 @@ export const notificationApi = {
                 message: 'Device token registered successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as UserDeviceToken,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -142,7 +175,10 @@ export const notificationApi = {
                 message: 'Device token updated successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as UserDeviceToken,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -151,11 +187,18 @@ export const notificationApi = {
      * @param tokenId - ID of the device token to delete
      * @returns Promise that resolves when the device token is deleted
      */
-    deleteDeviceToken: async (tokenId: number): Promise<void> => {
+    deleteDeviceToken: async (tokenId: number): Promise<ApiResponse<void>> => {
         try {
             await apiRequest(`/device-tokens/${tokenId}/`, 'DELETE');
+            return {
+                data: undefined,
+                message: 'Device token deleted successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -171,7 +214,10 @@ export const notificationApi = {
                 message: 'User device tokens fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: [],
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -180,11 +226,18 @@ export const notificationApi = {
      * @param tokenId - ID of the device token to send the test notification to
      * @returns Promise that resolves when the test notification is sent
      */
-    sendTestNotification: async (tokenId: number): Promise<void> => {
+    sendTestNotification: async (tokenId: number): Promise<ApiResponse<void>> => {
         try {
             await apiRequest(`/device-tokens/${tokenId}/send-test-notification/`, 'POST');
+            return {
+                data: undefined,
+                message: 'Test notification sent successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 };

@@ -21,12 +21,29 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    firstName = serializers.CharField(source='user.first_name', required=False)
+    lastName = serializers.CharField(source='user.last_name', required=False)
+    email = serializers.EmailField(source='user.email', required=False)
 
     class Meta:
         model = UserProfile
-        fields = '__all__'
+        fields = ['firstName', 'lastName', 'email', 'bio', 'profilePicture', 'phoneNumber', 
+                  'defaultTimezone', 'notificationPreferences', 'lastLoginPlatform', 'profileComplete']
 
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', {})
+        user = instance.user
+
+        for attr, value in user_data.items():
+            setattr(user, attr, value)
+        user.save()
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        return instance
+    
     def update_preferences(self, user, preferences):
         """
         Call UserPreferencesManager to update the user preferences.
@@ -76,9 +93,9 @@ class RecurringScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecurringSchedule
         fields = [
-            'id', 'title', 'description', 'location', 'startTime', 'endTime', 
-            'frequency', 'interval', 'startDate', 'endDate', 'days_of_week',
-            'day_of_month', 'month_of_year', 'color', 'created_at', 'updated_at', 'isActive'
+            'id', 'title', 'description', 'location', 'start_time', 'end_time', 
+            'frequency', 'interval', 'start_date', 'end_date', 'days_of_week',
+            'day_of_month', 'month_of_year', 'color', 'created_at', 'updated_at', 'is_active'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -87,11 +104,11 @@ class RecurringScheduleSerializer(serializers.ModelSerializer):
         Convert camelCase fields to snake_case before passing data to the model.
         """
         data = {
-            'start_time': data.get('startTime'),
-            'end_time': data.get('endTime'),
-            'start_date': data.get('startDate'),
-            'end_date': data.get('endDate'),
-            'is_active': data.get('isActive'),
+            'start_time': data.get('start_time'),
+            'end_time': data.get('end_time'),
+            'start_date': data.get('start_tate'),
+            'end_date': data.get('end_date'),
+            'is_active': data.get('is_active'),
             **data
         }
         return super().to_internal_value(data)
@@ -101,11 +118,11 @@ class RecurringScheduleSerializer(serializers.ModelSerializer):
         Convert snake_case fields to camelCase when sending data back to the frontend.
         """
         representation = super().to_representation(instance)
-        representation['startTime'] = representation.pop('start_time', None)
-        representation['endTime'] = representation.pop('end_time', None)
-        representation['startDate'] = representation.pop('start_date', None)
-        representation['endDate'] = representation.pop('end_date', None)
-        representation['isActive'] = representation.pop('is_active', None)
+        representation['start_ime'] = representation.pop('start_time', None)
+        representation['end_time'] = representation.pop('end_time', None)
+        representation['start_date'] = representation.pop('start_date', None)
+        representation['end_date'] = representation.pop('end_date', None)
+        representation['is_active'] = representation.pop('is_active', None)
         return representation
 
     def validate(self, data):
@@ -131,14 +148,9 @@ class RecurringScheduleSerializer(serializers.ModelSerializer):
         return data
 
 class EventSerializer(serializers.ModelSerializer):
-    shared_with = serializers.SlugRelatedField(
-        many=True,
-        slug_field='username',
-        queryset=CustomUser.objects.all(),
-        required=False
-    )
-    created_by = serializers.ReadOnlyField(source='created_by.username')
-    reminders = EventReminderSerializer(many=True, required=False)
+    shared_with = UserSerializer(many=True, read_only=True)
+    created_by = UserSerializer(read_only=True)
+    is_all_day = serializers.BooleanField()
 
     class Meta:
         model = Event
@@ -152,17 +164,9 @@ class EventSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation['shared_with'] = representation.pop('shared_with', [])
+        if 'recurrence_rule' in representation and representation['recurrence_rule']:
+            representation['recurrence_rule']['days_of_week'] = representation['recurrence_rule'].get('days_of_week', '').split(',')
         return representation
-
-    def to_internal_value(self, data):
-        if 'startTime' in data:
-            data['start_time'] = data.pop('startTime')
-        if 'endTime' in data:
-            data['end_time'] = data.pop('endTime')
-        if 'isAllDay' in data:
-            data['is_all_day'] = data.pop('isAllDay')
-        return super().to_internal_value(data)
 
     def create(self, validated_data):
         reminders_data = validated_data.pop('reminders', [])

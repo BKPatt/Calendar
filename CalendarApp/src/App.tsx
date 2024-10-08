@@ -16,7 +16,7 @@ import UpcomingEventsScreen from './screens/UpcomingEventsScreen';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import PublicRoute from './auth/PublicRoute';
 import AppHeader from './AppHeader';
-import NavTray from './NavTray';  // Import the new NavTray component
+import NavTray from './NavTray';
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();

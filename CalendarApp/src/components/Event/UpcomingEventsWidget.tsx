@@ -19,10 +19,10 @@ const UpcomingEventsWidget: React.FC = () => {
 
     const formatDateRange = (start: string, end: string, recurring: boolean) => {
         try {
-            const startDate = parseISO(start);
-            const endDate = parseISO(end);
+            const start_date = parseISO(start);
+            const end_date = parseISO(end);
 
-            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            if (isNaN(start_date.getTime()) || isNaN(end_date.getTime())) {
                 throw new Error('Invalid date');
             }
 
@@ -31,22 +31,22 @@ const UpcomingEventsWidget: React.FC = () => {
                 return (
                     <Box>
                         <Typography component="span" variant="body2">
-                            {format(startDate, 'MMM d, yyyy')}
+                            {format(start_date, 'MMM d, yyyy')}
                         </Typography>
                         <Typography component="span" variant="body2" sx={{ display: 'block' }}>
-                            {format(startDate, 'h:mm a')} - {format(endDate, 'h:mm a')}
+                            {format(start_date, 'h:mm a')} - {format(end_date, 'h:mm a')}
                         </Typography>
                     </Box>
                 );
-            } else if (isSameDay(startDate, endDate)) {
+            } else if (isSameDay(start_date, end_date)) {
                 // For non-recurring events on the same day
                 return (
                     <Box>
                         <Typography component="span" variant="body2">
-                            {format(startDate, 'MMM d, yyyy')}
+                            {format(start_date, 'MMM d, yyyy')}
                         </Typography>
                         <Typography component="span" variant="body2" sx={{ display: 'block' }}>
-                            {format(startDate, 'h:mm a')} - {format(endDate, 'h:mm a')}
+                            {format(start_date, 'h:mm a')} - {format(end_date, 'h:mm a')}
                         </Typography>
                     </Box>
                 );
@@ -55,13 +55,13 @@ const UpcomingEventsWidget: React.FC = () => {
                 return (
                     <Box>
                         <Typography component="span" variant="body2">
-                            {format(startDate, 'MMM d, yyyy h:mm a')}
+                            {format(start_date, 'MMM d, yyyy h:mm a')}
                         </Typography>
                         <Typography component="span" variant="body2" sx={{ display: 'block' }} align='center'>
                             -
                         </Typography>
                         <Typography component="span" variant="body2">
-                            {format(endDate, 'MMM d, yyyy h:mm a')}
+                            {format(end_date, 'MMM d, yyyy h:mm a')}
                         </Typography>
                     </Box>
                 );

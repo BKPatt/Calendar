@@ -1,5 +1,5 @@
 import { ApiResponse, Events } from '../../types/event';
-import { apiRequest, getPaginatedResults, handleApiError } from '../../utils/apiHelpers';
+import { apiRequest, handleApiError } from '../../utils/apiHelpers';
 import { getCurrentUser } from '../auth';
 
 /**
@@ -22,7 +22,10 @@ export const eventApi = {
             const user = await getCurrentUser();
 
             if (!user || !user.id) {
-                throw new Error('User is not authenticated');
+                return {
+                    data: [],
+                    error: ['User is not authenticated'],
+                };
             }
 
             if (params) {
@@ -41,18 +44,24 @@ export const eventApi = {
                 message: 'Events fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: [],
+                error: handleApiError(error),
+            };
         }
     },
 
     /**
      * Create a new event
      * @param eventData - Partial Event object containing the new event details
-     * @returns Promise with the created Event object
+     * @returns Promise with the created Event object or an error response
      */
-    createEvent: async (eventData: Partial<Events>): Promise<Events> => {
+    createEvent: async (eventData: Partial<Events>): Promise<ApiResponse<Events>> => {
         if (!eventData.start_time || !eventData.end_time || !eventData.start_date) {
-            throw new Error('Start time, end time, and start date are required');
+            return {
+                data: {} as Events,
+                error: ['Start time, end time, and start date are required'],
+            };
         }
 
         try {
@@ -72,10 +81,25 @@ export const eventApi = {
                 delete payload.recurrence_rule;
             }
 
-            const response = await apiRequest<Events>('/events/', 'POST', payload);
-            return response.data;
-        } catch (error) {
-            throw new Error(handleApiError(error));
+            // Remove shared_with from the payload
+            const { shared_with, ...payloadWithoutSharedWith } = payload;
+
+            const response = await apiRequest<Events>('/events/', 'POST', payloadWithoutSharedWith);
+
+            // If there are shared_with users, update the event after creation
+            if (shared_with && shared_with.length > 0) {
+                await apiRequest<Events>(`/events/${response.data.id}/`, 'PATCH', { shared_with });
+            }
+
+            return {
+                data: response.data,
+                message: 'Event created successfully',
+            };
+        } catch (error: any) {
+            return {
+                data: {} as Events,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -85,12 +109,18 @@ export const eventApi = {
      * @param eventData - Partial Event object containing the updated event details
      * @returns Promise with the updated Event object
      */
-    updateEvent: async (eventId: number, eventData: Partial<Events>): Promise<Events> => {
+    updateEvent: async (eventId: number, eventData: Partial<Events>): Promise<ApiResponse<Events>> => {
         try {
             const response = await apiRequest<Events>(`/events/${eventId}/`, 'PATCH', eventData);
-            return response.data;
+            return {
+                data: response.data,
+                message: 'Event updated successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Events,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -99,18 +129,19 @@ export const eventApi = {
      * @param eventId - ID of the event to fetch
      * @returns Promise with the Event object
      */
-    getEvent: async (eventId: number): Promise<ApiResponse<ApiResponse<Events>>> => {
+    getEvent: async (eventId: number): Promise<ApiResponse<Events>> => {
         try {
+            // This returns a single ApiResponse<Events> (not nested)
             const response = await apiRequest<Events>(`/events/${eventId}/`, 'GET');
             return {
-                data: {
-                    data: response.data,
-                    message: 'Event fetched successfully'
-                },
-                message: 'Outer API response',
+                data: response.data,
+                message: 'Event fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Events,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -119,11 +150,18 @@ export const eventApi = {
      * @param eventId - ID of the event to delete
      * @returns Promise that resolves when the event is deleted
      */
-    deleteEvent: async (eventId: number): Promise<void> => {
+    deleteEvent: async (eventId: number): Promise<ApiResponse<void>> => {
         try {
             await apiRequest(`/events/${eventId}/`, 'DELETE');
+            return {
+                data: undefined,
+                message: 'Event deleted successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -133,17 +171,29 @@ export const eventApi = {
      * @param email - Email of the user to share the event with
      * @returns Promise that resolves when the event is shared
      */
-    shareEvent: async (eventId: number, email: string): Promise<void> => {
-        const response = await fetch(`/api/events/${eventId}/share`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email }),
-        });
+    shareEvent: async (eventId: number, email: string): Promise<ApiResponse<void>> => {
+        try {
+            const response = await fetch(`/api/events/${eventId}/share`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email }),
+            });
 
-        if (!response.ok) {
-            throw new Error('Failed to share event');
+            if (!response.ok) {
+                throw new Error('Failed to share event');
+            }
+
+            return {
+                data: undefined,
+                message: 'Event shared successfully',
+            };
+        } catch (error) {
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -153,12 +203,18 @@ export const eventApi = {
      * @param eta - New ETA for the event
      * @returns Promise with the updated Event object
      */
-    updateEventETA: async (eventId: number, eta: string): Promise<Event> => {
+    updateEventETA: async (eventId: number, eta: string): Promise<ApiResponse<Events>> => {
         try {
-            const response = await apiRequest<Event>(`/events/${eventId}/update-eta/`, 'PATCH', { eta });
-            return response.data;
+            const response = await apiRequest<Events>(`/events/${eventId}/update-eta/`, 'PATCH', { eta });
+            return {
+                data: response.data,
+                message: 'ETA updated successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Events,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -175,7 +231,10 @@ export const eventApi = {
                 message: 'Upcoming events fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: [],
+                error: handleApiError(error),
+            };
         }
     },
 };

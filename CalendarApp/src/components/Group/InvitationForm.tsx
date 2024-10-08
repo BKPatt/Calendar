@@ -45,8 +45,6 @@ const InvitationForm: React.FC<InvitationFormProps> = ({ open, onClose, onInvita
         if (!user || !selectedGroupId) return;
 
         try {
-            // Send invitation based on selectedGroupId and invitationData.email
-            // Implement the invitation sending API call here
             onInvitationSent();
             onClose();
         } catch (error) {

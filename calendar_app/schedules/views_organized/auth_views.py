@@ -85,6 +85,22 @@ class RegisterView(APIView):
         if serializer.is_valid():
             try:
                 user = serializer.save()
+                
+                # Create UserProfile for the new user
+                profile_data = {
+                    'user': user,
+                    'bio': request.data.get('bio', ''),
+                    'profile_picture': request.data.get('profilePicture', ''),
+                    'phone_number': request.data.get('phoneNumber', ''),
+                    'default_timezone': request.data.get('defaultTimezone', 'UTC'),
+                }
+                user_profile = UserProfile.objects.create(**profile_data)
+                
+                # Update first_name and last_name in the CustomUser model
+                user.first_name = request.data.get('firstName', '')
+                user.last_name = request.data.get('lastName', '')
+                user.save()
+
                 refresh = RefreshToken.for_user(user)
                 access_token = str(refresh.access_token)
 

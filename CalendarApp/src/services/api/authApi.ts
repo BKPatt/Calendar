@@ -25,7 +25,10 @@ export const authApi = {
                 message: 'User registered successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as AuthResponse,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -44,7 +47,10 @@ export const authApi = {
                 message: 'User logged in successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as AuthResponse,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -52,13 +58,20 @@ export const authApi = {
      * Log out the current user
      * @returns Promise that resolves when the user is logged out successfully
      */
-    logout: async (): Promise<void> => {
+    logout: async (): Promise<ApiResponse<void>> => {
         try {
             await apiRequest('/auth/logout/', 'POST');
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
+            return {
+                data: undefined,
+                message: 'User logged out successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -69,9 +82,15 @@ export const authApi = {
     refreshToken: async (refreshToken: string): Promise<ApiResponse<{ access: string }>> => {
         try {
             const response = await apiRequest<{ access: string }>('/auth/token/refresh/', 'POST', { refresh: refreshToken });
-            return response;
+            return {
+                data: response.data,
+                message: 'Token refreshed successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: { access: '' },
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -87,7 +106,10 @@ export const authApi = {
                 message: 'Current user fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as User,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -97,11 +119,18 @@ export const authApi = {
      * @param newPassword - User's new password
      * @returns Promise that resolves when the password is changed successfully
      */
-    changePassword: async (oldPassword: string, newPassword: string): Promise<void> => {
+    changePassword: async (oldPassword: string, newPassword: string): Promise<ApiResponse<void>> => {
         try {
             await apiRequest('/auth/change-password/', 'POST', { old_password: oldPassword, new_password: newPassword });
+            return {
+                data: undefined,
+                message: 'Password changed successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -110,11 +139,18 @@ export const authApi = {
      * @param email - User's email address
      * @returns Promise that resolves when the password reset email is sent
      */
-    requestPasswordReset: async (email: string): Promise<void> => {
+    requestPasswordReset: async (email: string): Promise<ApiResponse<void>> => {
         try {
             await apiRequest('/auth/password-reset-request/', 'POST', { email });
+            return {
+                data: undefined,
+                message: 'Password reset email sent successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -124,11 +160,18 @@ export const authApi = {
      * @param newPassword - New password
      * @returns Promise that resolves when the password is reset successfully
      */
-    resetPassword: async (token: string, newPassword: string): Promise<void> => {
+    resetPassword: async (token: string, newPassword: string): Promise<ApiResponse<void>> => {
         try {
             await apiRequest('/auth/password-reset/', 'POST', { token, new_password: newPassword });
+            return {
+                data: undefined,
+                message: 'Password reset successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -137,11 +180,18 @@ export const authApi = {
      * @param token - Email verification token
      * @returns Promise that resolves when the email is verified successfully
      */
-    verifyEmail: async (token: string): Promise<void> => {
+    verifyEmail: async (token: string): Promise<ApiResponse<void>> => {
         try {
             await apiRequest('/auth/verify-email/', 'POST', { token });
+            return {
+                data: undefined,
+                message: 'Email verified successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     TextField,
     Button,
@@ -19,6 +19,7 @@ import {
     IconButton,
     Typography,
     ListItemText,
+    Alert,
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -28,10 +29,12 @@ import { useApi } from '../../hooks/useApi';
 import { eventApi } from '../../services/api/eventApi';
 import { groupApi } from '../../services/api/groupApi';
 import { Group } from '../../types/group';
-import { Events, EventType, RecurrenceRule } from '../../types/event';
+import { ApiResponse, EVENT_TYPES, Events, RecurrenceRule } from '../../types/event';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { format } from 'date-fns';
+import LocationAutocomplete from '../Maps/LocationAutocomplete';
+import { Form } from 'react-router-dom';
 
 const EVENT_COLORS = [
     { name: 'Red', value: '#F44336' },
@@ -54,7 +57,6 @@ const EVENT_COLORS = [
     { name: 'Grey', value: '#9E9E9E' },
 ];
 
-const EVENT_TYPES: EventType[] = ['meeting', 'appointment', 'social', 'work', 'other'];
 const REMINDER_TYPES = ['email', 'push', 'in_app'];
 
 interface EventFormProps {
@@ -66,34 +68,34 @@ interface EventFormProps {
 const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) => {
     const { createEvent } = eventApi;
     const { getGroups } = groupApi;
-
-    const { user, isAuthenticated } = useAuth();
+    const { user } = useAuth();
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
-    const { data: groups, isLoading, error } = useApi<Group[]>(getGroups);
-    const [selectedDays, setSelectedDays] = useState<string[]>([]);
+    const { data: groups } = useApi<Group[]>(getGroups);
 
+    const [selectedDays, setSelectedDays] = useState<string[]>([]);
     const [eventData, setEventData] = useState<Events>({
         title: '',
         description: '',
-        eventType: 'other',
+        event_type: 'other',
         location: '',
         start_time: new Date().toISOString(),
         end_time: new Date().toISOString(),
         start_date: format(new Date(), 'yyyy-MM-dd'),
-        isAllDay: false,
+        is_all_day: false,
         recurring: false,
         color: EVENT_COLORS[0].value,
-        sharedWith: [],
+        shared_with: [],
         reminders: [],
     });
-
     const [recurringFrequency, setRecurringFrequency] = useState<RecurrenceRule['frequency']>('WEEKLY');
     const [recurringInterval, setRecurringInterval] = useState<number>(1);
+    const [errors, setErrors] = useState<{ [key: string]: string | string[] }>({});
+    const [generalError, setGeneralError] = useState<string | null>(null);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const contentRef = useRef<HTMLDivElement>(null);
 
+    const handleSubmit = async () => {
         if (!user) return;
 
         try {
@@ -110,11 +112,36 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
                     : undefined,
             };
 
-            await createEvent(finalEventData);
-            onEventCreated();
-            onClose();
-        } catch (error) {
-            console.error('Failed to create event:', error);
+            const response: ApiResponse<Events> = await createEvent(finalEventData);
+            console.log(response)
+            // Handle success response if there's no error
+            if (response && !response.error) {
+                console.log("Success response:", response);
+                onEventCreated();
+                onClose();
+            } else if (response.error) {
+                // Handle error in the API response
+                console.error("API error response:", response.error);
+                setGeneralError(response.error.join(', ') || "An error occurred while creating the event.");
+
+                if (contentRef.current) {
+                    contentRef.current.scrollTo({
+                        top: 0,
+                        behavior: 'smooth',
+                    });
+                }
+            }
+        } catch (error: any) {
+            // Catch network or unexpected errors
+            if (contentRef.current) {
+                contentRef.current.scrollTo({
+                    top: 0,
+                    behavior: 'smooth',
+                });
+            }
+
+            console.error("Unhandled error:", error);
+            setGeneralError("An unexpected error occurred.");
         }
     };
 
@@ -133,7 +160,7 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
         }
     };
 
-    const handleCheckboxChange = (name: 'isAllDay' | 'recurring') => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleCheckboxChange = (name: 'is_all_day' | 'recurring') => (e: React.ChangeEvent<HTMLInputElement>) => {
         setEventData(prev => ({ ...prev, [name]: e.target.checked }));
     };
 
@@ -173,6 +200,22 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
         setSelectedDays(event.target.value as string[]);
     };
 
+    const handleLocationChange = (value: string) => {
+        setEventData(prev => ({ ...prev, location: value }));
+    };
+
+    const renderFieldError = (fieldName: string) => {
+        const error = errors[fieldName];
+        if (error) {
+            return (
+                <Typography color="error" variant="caption">
+                    {Array.isArray(error) ? error.join(', ') : error}
+                </Typography>
+            );
+        }
+        return null;
+    };
+
     return (
         <Dialog
             open={open}
@@ -183,35 +226,47 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
             fullScreen={fullScreen}
         >
             <DialogTitle>Create New Event</DialogTitle>
-            <DialogContent>
+            <DialogContent ref={contentRef}>
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
-                    <form onSubmit={handleSubmit}>
-                        <TextField
-                            fullWidth
-                            label="Title"
-                            name="title"
-                            value={eventData.title}
-                            onChange={handleInputChange}
-                            margin="normal"
-                            required
-                        />
-                        <TextField
-                            fullWidth
-                            label="Description"
-                            name="description"
-                            value={eventData.description}
-                            onChange={handleInputChange}
-                            margin="normal"
-                            multiline
-                            rows={4}
-                        />
+                    <Box>
+                        {generalError && (
+                            <Alert severity="error" sx={{ mb: 2 }}>
+                                {generalError}
+                            </Alert>
+                        )}
+                        <FormControl fullWidth margin="normal">
+                            <TextField
+                                fullWidth
+                                label="Title"
+                                name="title"
+                                value={eventData.title}
+                                onChange={handleInputChange}
+                                required
+                                error={!!errors.title}
+                                helperText={renderFieldError('title')}
+                            />
+                        </FormControl>
+                        <FormControl fullWidth margin="normal">
+                            <TextField
+                                fullWidth
+                                label="Description"
+                                name="description"
+                                value={eventData.description}
+                                onChange={handleInputChange}
+                                multiline
+                                rows={4}
+                                error={!!errors.description}
+                                helperText={renderFieldError('description')}
+                            />
+                        </FormControl>
                         <FormControl fullWidth margin="normal">
                             <InputLabel>Event Type</InputLabel>
                             <Select
-                                name="eventType"
-                                value={eventData.eventType}
+                                name="event_type"
+                                value={eventData.event_type}
                                 onChange={handleSelectChange}
                                 label="Event Type"
+                                error={!!errors.event_type}
                             >
                                 {EVENT_TYPES.map((type) => (
                                     <MenuItem key={type} value={type}>
@@ -219,45 +274,68 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
                                     </MenuItem>
                                 ))}
                             </Select>
+                            {renderFieldError('event_type')}
                         </FormControl>
-                        <TextField
-                            fullWidth
-                            label="Location"
-                            name="location"
-                            value={eventData.location}
-                            onChange={handleInputChange}
-                            margin="normal"
+                        <LocationAutocomplete
+                            value={eventData.location || ''}
+                            onChange={handleLocationChange}
+                            error={!!errors.location}
                         />
-                        <DateTimePicker
-                            label="Start Time"
-                            value={new Date(eventData.start_time)}
-                            onChange={handleDateChange('start_time')}
-                        />
-                        <DateTimePicker
-                            label="End Time"
-                            value={new Date(eventData.end_time)}
-                            onChange={handleDateChange('end_time')}
-                        />
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                    checked={eventData.isAllDay}
-                                    onChange={handleCheckboxChange('isAllDay')}
-                                    name="isAllDay"
-                                />
-                            }
-                            label="All Day Event"
-                        />
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                    checked={eventData.recurring}
-                                    onChange={handleCheckboxChange('recurring')}
-                                    name="recurring"
-                                />
-                            }
-                            label="Recurring Event"
-                        />
+                        {renderFieldError('location')}
+                        <FormControl fullWidth margin="normal">
+                            <DateTimePicker
+                                label="Start Time"
+                                value={new Date(eventData.start_time)}
+                                onChange={(newValue) => handleDateChange('start_time')(newValue)}
+                                slotProps={{
+                                    textField: {
+                                        fullWidth: true,
+                                        error: !!errors.start_time,
+                                        helperText: renderFieldError('start_time'),
+                                    },
+                                }}
+                            />
+                        </FormControl>
+                        <FormControl fullWidth margin="normal">
+                            <DateTimePicker
+                                label="End Time"
+                                value={new Date(eventData.end_time)}
+                                onChange={(newValue) => handleDateChange('end_time')(newValue)}
+                                slotProps={{
+                                    textField: {
+                                        fullWidth: true,
+                                        error: !!errors.end_time,
+                                        helperText: renderFieldError('end_time'),
+                                    },
+                                }}
+                            />
+                        </FormControl>
+                        <FormControl fullWidth margin="normal">
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={eventData.is_all_day}
+                                        onChange={handleCheckboxChange('is_all_day')}
+                                        name="is_all_day"
+                                    />
+                                }
+                                label="All Day Event"
+                            />
+                            {renderFieldError('is_all_day')}
+                        </FormControl>
+                        <FormControl fullWidth margin="normal">
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={eventData.recurring}
+                                        onChange={handleCheckboxChange('recurring')}
+                                        name="recurring"
+                                    />
+                                }
+                                label="Recurring Event"
+                            />
+                            {renderFieldError('recurring')}
+                        </FormControl>
                         {eventData.recurring && (
                             <Box>
                                 <FormControl fullWidth margin="normal">
@@ -266,30 +344,35 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
                                         value={recurringFrequency}
                                         onChange={(e) => setRecurringFrequency(e.target.value as RecurrenceRule['frequency'])}
                                         label="Recurring Frequency"
+                                        error={!!errors.recurrence_rule}
                                     >
                                         <MenuItem value="DAILY">Daily</MenuItem>
                                         <MenuItem value="WEEKLY">Weekly</MenuItem>
                                         <MenuItem value="MONTHLY">Monthly</MenuItem>
                                         <MenuItem value="YEARLY">Yearly</MenuItem>
                                     </Select>
+                                    {renderFieldError('recurrence_rule')}
                                 </FormControl>
-                                <TextField
-                                    fullWidth
-                                    label="Repeat every (number of days/weeks/months/years)"
-                                    type="number"
-                                    value={recurringInterval}
-                                    onChange={(e) => setRecurringInterval(parseInt(e.target.value))}
-                                    inputProps={{ min: 1 }}
-                                    margin="normal"
-                                />
+                                <FormControl fullWidth margin="normal">
+                                    <TextField
+                                        label="Repeat every (number of days/weeks/months/years)"
+                                        type="number"
+                                        value={recurringInterval}
+                                        onChange={(e) => setRecurringInterval(parseInt(e.target.value))}
+                                        inputProps={{ min: 1 }}
+                                        error={!!errors.recurrence_interval}
+                                        helperText={renderFieldError('recurrence_interval')}
+                                    />
+                                </FormControl>
                                 {recurringFrequency === 'WEEKLY' && (
                                     <FormControl fullWidth margin="normal">
                                         <InputLabel>Days of Week</InputLabel>
                                         <Select
                                             multiple
                                             value={selectedDays}
-                                            onChange={(e) => setSelectedDays(e.target.value as string[])}
+                                            onChange={handleDaysChange}
                                             renderValue={(selected) => (selected as string[]).join(', ')}
+                                            error={!!errors.days_of_week}
                                         >
                                             {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
                                                 <MenuItem key={day} value={day}>
@@ -298,6 +381,7 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
                                                 </MenuItem>
                                             ))}
                                         </Select>
+                                        {renderFieldError('days_of_week')}
                                     </FormControl>
                                 )}
                             </Box>
@@ -309,6 +393,7 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
                                 value={eventData.color}
                                 onChange={handleSelectChange}
                                 label="Event Color"
+                                error={!!errors.color}
                             >
                                 {EVENT_COLORS.map((color) => (
                                     <MenuItem key={color.value} value={color.value}>
@@ -326,51 +411,42 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
                                     </MenuItem>
                                 ))}
                             </Select>
-                        </FormControl>
-                        <FormControl fullWidth margin="normal">
-                            <InputLabel>Share with Group</InputLabel>
-                            <Select
-                                value={eventData.group || ''}
-                                onChange={handleGroupChange}
-                                label="Share with Group"
-                            >
-                                <MenuItem value="">
-                                    <em>None</em>
-                                </MenuItem>
-                                {groups?.map((group) => (
-                                    <MenuItem key={group.id} value={group.id}>
-                                        {group.name}
-                                    </MenuItem>
-                                ))}
-                            </Select>
+                            {renderFieldError('color')}
                         </FormControl>
                         <Box mt={2}>
                             <Typography variant="subtitle1">Reminders</Typography>
                             {eventData.reminders.map((reminder, index) => (
                                 <Box key={index} display="flex" alignItems="center" mt={1}>
-                                    <TextField
-                                        label="Time before event"
-                                        type="number"
-                                        value={reminder.reminder_time}
-                                        onChange={(e) => handleReminderChange(index, 'reminder_time', e.target.value)}
-                                        style={{ marginRight: '10px', width: '150px' }}
-                                    />
-                                    <Select
-                                        value={reminder.reminder_type}
-                                        onChange={(e) => handleReminderChange(index, 'reminder_type', e.target.value as string)}
-                                        style={{ marginRight: '10px', width: '150px' }}
-                                    >
-                                        {REMINDER_TYPES.map((type) => (
-                                            <MenuItem key={type} value={type}>
-                                                {type}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
+                                    <FormControl margin="normal">
+                                        <TextField
+                                            label="Time before event"
+                                            type="number"
+                                            value={reminder.reminder_time}
+                                            onChange={(e) => handleReminderChange(index, 'reminder_time', e.target.value)}
+                                            style={{ marginRight: '10px', width: '150px' }}
+                                            error={!!errors.reminders}
+                                        />
+                                    </FormControl>
+                                    <FormControl margin="normal">
+                                        <Select
+                                            value={reminder.reminder_type}
+                                            onChange={(e) => handleReminderChange(index, 'reminder_type', e.target.value as string)}
+                                            style={{ marginRight: '10px', width: '150px' }}
+                                            error={!!errors.reminders}
+                                        >
+                                            {REMINDER_TYPES.map((type) => (
+                                                <MenuItem key={type} value={type}>
+                                                    {type}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
                                     <IconButton onClick={() => handleRemoveReminder(index)}>
                                         <DeleteIcon />
                                     </IconButton>
                                 </Box>
                             ))}
+                            {renderFieldError('reminders')}
                             <Button
                                 startIcon={<AddIcon />}
                                 onClick={handleAddReminder}
@@ -381,7 +457,7 @@ const EventForm: React.FC<EventFormProps> = ({ open, onClose, onEventCreated }) 
                                 Add Reminder
                             </Button>
                         </Box>
-                    </form>
+                    </Box>
                 </LocalizationProvider>
             </DialogContent>
             <DialogActions>

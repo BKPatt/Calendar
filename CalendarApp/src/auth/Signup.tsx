@@ -38,7 +38,7 @@ const SignUp: React.FC = () => {
             const encryptedPassword = encrypted.ciphertext.toString(CryptoJS.enc.Base64);
 
             await register({ username, email, password: encryptedPassword });
-            navigate('/');
+            navigate('/profile-setup');
         } catch (error) {
             console.error('Registration error:', error);
             setError('Failed to create an account. Please try again.');

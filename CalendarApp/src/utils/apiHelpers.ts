@@ -1,6 +1,6 @@
 import { ApiResponse, PaginatedResponse } from "../types/event";
-import * as authService from '../services/auth';
 import { authApi } from "../services/api/authApi";
+import { FieldErrors } from "../types/types";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
 
@@ -53,7 +53,8 @@ export const apiRequest = async <T>(
     }
 
     if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(JSON.stringify(errorData));
     }
 
     const data = await response.json();
@@ -128,11 +129,56 @@ export const buildQueryString = (params: Record<string, string | number | boolea
 /**
  * Handle API errors
  * @param error - caught error object
- * @returns formatted error message
+ * @returns formatted error messages as an array of strings
  */
-export const handleApiError = (error: any): string => {
-    if (error instanceof Error) {
-        return error.message;
+export const handleApiError = (error: any): string[] => {
+    let errorMessage = 'An unknown error occurred';
+
+    if (error instanceof Error && error.message) {
+        try {
+            const parsedError = JSON.parse(error.message);
+
+            if (parsedError.error) {
+                const rawError = parsedError.error;
+
+                const errorMatch = rawError.match(/{'(.*?)': \[(.*?)\]}/);
+
+                if (errorMatch) {
+                    const field = errorMatch[1];
+                    const message = errorMatch[2].replace(/ErrorDetail\(string='(.*?)', code='.*?'\)/, '$1').replace(/'/g, '');
+
+                    if (field === '__all__') {
+                        return [message];
+                    }
+
+                    const capitalizedField = field.charAt(0).toUpperCase() + field.slice(1);
+                    return [`${capitalizedField}: ${message}`];
+                }
+
+                return [rawError];
+            }
+
+            if (parsedError.errors) {
+                const detailedErrors = Object.entries(parsedError.errors).flatMap(([field, details]) => {
+                    if (Array.isArray(details)) {
+                        return details.map((detail: string) => {
+                            if (field === '__all__') {
+                                return detail;
+                            }
+                            const capitalizedField = field.charAt(0).toUpperCase() + field.slice(1);
+                            return `${capitalizedField}: ${detail}`;
+                        });
+                    }
+                    return [];
+                });
+                return detailedErrors;
+            }
+        } catch (parseError) {
+            console.error('Error parsing API error response:', parseError);
+            errorMessage = error.message;
+        }
     }
-    return 'An unknown error occurred';
+
+    // If the error is not a standard Error or couldn't be parsed, return the error as is
+    return [errorMessage];
 };

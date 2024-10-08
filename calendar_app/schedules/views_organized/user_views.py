@@ -40,10 +40,22 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         """
         Update the logged-in user's profile.
         """
-        preferences = request.data
-        user_profile = UserPreferencesManager.update_preferences(request.user, preferences)
-        serializer = self.get_serializer(user_profile)
-        return Response(serializer.data)
+        profile = get_object_or_404(UserProfile, user=request.user)
+        serializer = self.get_serializer(profile, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+
+            # Convert any translation proxy objects to strings
+            for field in serializer.data:
+                if isinstance(serializer.data[field], Promise):
+                    serializer.data[field] = str(serializer.data[field])
+                    
+            return Response({
+                'data': serializer.data,
+                'message': 'User profile updated successfully'
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'])
     def preferences(self, request):
@@ -83,27 +95,28 @@ def get_user_profile(request, user_id):
         return Response({'error': 'User profile not found'}, status=status.HTTP_404_NOT_FOUND)
     
     serializer = UserProfileSerializer(user_profile)
-
-    # Ensure any translation proxy objects are converted to strings
+    
     for field in serializer.data:
         if isinstance(serializer.data[field], Promise):
             serializer.data[field] = str(serializer.data[field])
-    
+
     return Response({
         'data': serializer.data,
         'message': 'User profile fetched successfully'
     })
     
-@api_view(['POST'])
+@api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def update_user_profile(request, user_id):
     try:
-        profile = UserProfile.objects.get(user_id=user_id)
-    except UserProfile.DoesNotExist:
-        return Response({"error": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
+        user = CustomUser.objects.get(id=user_id)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
     if request.user.id != int(user_id):
         return Response({"error": "You don't have permission to update this profile"}, status=status.HTTP_403_FORBIDDEN)
+
+    profile, created = UserProfile.objects.get_or_create(user=user)
 
     serializer = UserProfileSerializer(profile, data=request.data, partial=True)
     if serializer.is_valid():

@@ -1,4 +1,4 @@
-import { ApiResponse, PaginatedResponse, Availability, WorkSchedule, Events, RecurrenceRule } from '../../types/event';
+import { ApiResponse, PaginatedResponse, Availability, WorkSchedule, Events } from '../../types/event';
 import { apiRequest, getPaginatedResults, handleApiError } from '../../utils/apiHelpers';
 
 /**
@@ -18,7 +18,7 @@ export const scheduleApi = {
         try {
             return await getPaginatedResults<Availability>('/availabilities/', params);
         } catch (error) {
-            throw new Error(handleApiError(error));
+            throw new Error(handleApiError(error).join(', '));
         }
     },
 
@@ -35,7 +35,10 @@ export const scheduleApi = {
                 message: 'Availability created successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Availability,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -53,7 +56,10 @@ export const scheduleApi = {
                 message: 'Availability updated successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Availability,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -62,11 +68,18 @@ export const scheduleApi = {
      * @param availabilityId - ID of the availability to delete
      * @returns Promise that resolves when the availability is deleted
      */
-    deleteAvailability: async (availabilityId: number): Promise<void> => {
+    deleteAvailability: async (availabilityId: number): Promise<ApiResponse<void>> => {
         try {
             await apiRequest(`/availabilities/${availabilityId}/`, 'DELETE');
+            return {
+                data: undefined,
+                message: 'Availability deleted successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -79,7 +92,7 @@ export const scheduleApi = {
         try {
             return await getPaginatedResults<WorkSchedule>('/work-schedules/', params);
         } catch (error) {
-            throw new Error(handleApiError(error));
+            throw new Error(handleApiError(error).join(', '));
         }
     },
 
@@ -96,7 +109,10 @@ export const scheduleApi = {
                 message: 'Work schedule created successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as WorkSchedule,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -114,7 +130,10 @@ export const scheduleApi = {
                 message: 'Work schedule updated successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as WorkSchedule,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -123,11 +142,18 @@ export const scheduleApi = {
      * @param scheduleId - ID of the work schedule to delete
      * @returns Promise that resolves when the work schedule is deleted
      */
-    deleteWorkSchedule: async (scheduleId: number): Promise<void> => {
+    deleteWorkSchedule: async (scheduleId: number): Promise<ApiResponse<void>> => {
         try {
             await apiRequest(`/work-schedules/${scheduleId}/`, 'DELETE');
+            return {
+                data: undefined,
+                message: 'Work schedule deleted successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -144,7 +170,10 @@ export const scheduleApi = {
                 message: 'Recurring event created successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Events,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -162,7 +191,10 @@ export const scheduleApi = {
                 message: 'Recurring event updated successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Events,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -171,47 +203,60 @@ export const scheduleApi = {
      * @param eventId - ID of the recurring event to delete
      * @returns Promise that resolves when the recurring event is deleted
      */
-    deleteRecurringEvent: async (eventId: number): Promise<void> => {
+    deleteRecurringEvent: async (eventId: number): Promise<ApiResponse<void>> => {
         try {
             await apiRequest(`/events/${eventId}/`, 'DELETE');
+            return {
+                data: undefined,
+                message: 'Recurring event deleted successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
     /**
      * Fetch user's availability for a specific date range
-     * @param startDate - Start date for the availability range
-     * @param endDate - End date for the availability range
+     * @param start_date - Start date for the availability range
+     * @param end_date - End date for the availability range
      * @returns Promise with an array of available time slots
      */
-    getUserAvailability: async (startDate: string, endDate: string): Promise<ApiResponse<{ start: string, end: string }[]>> => {
+    getUserAvailability: async (start_date: string, end_date: string): Promise<ApiResponse<{ start: string, end: string }[]>> => {
         try {
-            const response = await apiRequest<{ start: string, end: string }[]>(`/user-availability/?start_date=${startDate}&end_date=${endDate}`, 'GET');
+            const response = await apiRequest<{ start: string, end: string }[]>(`/user-availability/?start_date=${start_date}&end_date=${end_date}`, 'GET');
             return {
                 data: response.data,
                 message: 'User availability fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: [],
+                error: handleApiError(error),
+            };
         }
     },
 
     /**
      * Check for scheduling conflicts
-     * @param startTime - Start time of the event to check
-     * @param endTime - End time of the event to check
+     * @param start_time - Start time of the event to check
+     * @param end_time - End time of the event to check
      * @returns Promise with conflict information
      */
-    checkConflicts: async (startTime: string, endTime: string): Promise<ApiResponse<{ hasConflicts: boolean, conflictingEvents?: Events[] }>> => {
+    checkConflicts: async (start_time: string, end_time: string): Promise<ApiResponse<{ hasConflicts: boolean, conflictingEvents?: Events[] }>> => {
         try {
-            const response = await apiRequest<{ hasConflicts: boolean, conflictingEvents?: Events[] }>('/check-conflicts/', 'POST', { start_time: startTime, end_time: endTime });
+            const response = await apiRequest<{ hasConflicts: boolean, conflictingEvents?: Events[] }>('/check-conflicts/', 'POST', { start_time, end_time });
             return {
                 data: response.data,
                 message: 'Conflict check completed successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: { hasConflicts: false },
+                error: handleApiError(error),
+            };
         }
     },
 };

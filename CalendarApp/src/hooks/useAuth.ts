@@ -9,6 +9,7 @@ interface UseAuthReturn {
     login: (username: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
     register: (userData: RegistrationData) => Promise<void>;
+    updateUser: (updatedUser: Partial<User>) => void;
 }
 
 export function useAuth(): UseAuthReturn {
@@ -110,5 +111,12 @@ export function useAuth(): UseAuthReturn {
         }
     };
 
-    return { user, isAuthenticated, isLoading, login, logout, register };
+    const updateUser = (updatedUser: Partial<User>) => {
+        setUser((prevUser) => ({
+            ...prevUser!,
+            ...updatedUser,
+        }));
+    };
+
+    return { user, isAuthenticated, isLoading, login, logout, register, updateUser };
 }

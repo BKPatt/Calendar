@@ -3,7 +3,6 @@ import {
     List,
     ListItem,
     ListItemText,
-    ListItemSecondaryAction,
     IconButton,
     Typography,
     Box,
@@ -70,7 +69,6 @@ const EventList: React.FC = () => {
         }
     };
 
-
     const handleEventSubmit = () => {
         setEditingEvent(null);
         fetchEvents();
@@ -98,7 +96,19 @@ const EventList: React.FC = () => {
                     </Typography>
                     <List>
                         {events.map((event) => (
-                            <EventItem key={event.id}>
+                            <EventItem
+                                key={event.id}
+                                secondaryAction={
+                                    <>
+                                        <IconButton edge="end" aria-label="edit" onClick={() => handleEditEvent(event)}>
+                                            <Edit />
+                                        </IconButton>
+                                        <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteEvent(event.id!)}>
+                                            <Delete />
+                                        </IconButton>
+                                    </>
+                                }
+                            >
                                 <EventIcon style={{ marginRight: 16, color: event.color }} />
                                 <ListItemText
                                     primary={event.title}
@@ -116,15 +126,7 @@ const EventList: React.FC = () => {
                                         </>
                                     }
                                 />
-                                <Chip label={event.eventType} size="small" style={{ marginRight: 8 }} />
-                                <ListItemSecondaryAction>
-                                    <IconButton edge="end" aria-label="edit" onClick={() => handleEditEvent(event)}>
-                                        <Edit />
-                                    </IconButton>
-                                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteEvent(event.id!)}>
-                                        <Delete />
-                                    </IconButton>
-                                </ListItemSecondaryAction>
+                                <Chip label={event.event_type} size="small" style={{ marginRight: 8 }} />
                             </EventItem>
                         ))}
                     </List>

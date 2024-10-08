@@ -27,9 +27,13 @@ export function useApi<T>(
         setError(null);
         try {
             const response = await apiCall();
-            setData(response.data);
+            if (response.error) {
+                setError(response.error.join(', '));
+            } else {
+                setData(response.data);
+            }
         } catch (err) {
-            setError(handleApiError(err));
+            setError(handleApiError(err).join(', '));
         } finally {
             setIsLoading(false);
         }
@@ -62,8 +66,9 @@ export function usePaginatedApi<T>(
             setData(prevData => newParams.page === '1' ? response.results as T[] : [...prevData, ...(response.results as T[])]);
             setHasMore(!!response.next);
             setParams(prevParams => ({ ...prevParams, ...newParams }));
+
         } catch (err) {
-            setError(handleApiError(err));
+            setError(handleApiError(err).join(', '));
         } finally {
             setIsLoading(false);
         }

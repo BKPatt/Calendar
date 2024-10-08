@@ -33,7 +33,7 @@ export const invitationApi = {
                 message: 'Invitations fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            throw new Error(handleApiError(error).join(', '));
         }
     },
 
@@ -50,7 +50,10 @@ export const invitationApi = {
                 message: 'Invitation created successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Invitation,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -67,7 +70,10 @@ export const invitationApi = {
                 message: 'Invitation fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Invitation,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -84,7 +90,10 @@ export const invitationApi = {
                 message: 'Invitation accepted successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Invitation,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -101,7 +110,10 @@ export const invitationApi = {
                 message: 'Invitation declined successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Invitation,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -110,11 +122,18 @@ export const invitationApi = {
      * @param invitationId - ID of the invitation to cancel
      * @returns Promise that resolves when the invitation is canceled
      */
-    cancelInvitation: async (invitationId: number): Promise<void> => {
+    cancelInvitation: async (invitationId: number): Promise<ApiResponse<void>> => {
         try {
             await apiRequest(`/invitations/${invitationId}/cancel/`, 'POST');
+            return {
+                data: undefined,
+                message: 'Invitation canceled successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -131,7 +150,10 @@ export const invitationApi = {
                 message: 'Invitation resent successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Invitation,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -147,7 +169,10 @@ export const invitationApi = {
                 message: 'Pending invitations fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: [],
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -163,7 +188,10 @@ export const invitationApi = {
                 message: 'Sent invitations fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: [],
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -181,7 +209,10 @@ export const invitationApi = {
                 message: 'Group invitation created successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Invitation,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -199,7 +230,10 @@ export const invitationApi = {
                 message: 'Event invitation created successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Invitation,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -217,7 +251,10 @@ export const invitationApi = {
                 message: 'Bulk event invitations created successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: [],
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -235,7 +272,10 @@ export const invitationApi = {
                 message: 'Invitation message updated successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Invitation,
+                error: handleApiError(error),
+            };
         }
     },
 };

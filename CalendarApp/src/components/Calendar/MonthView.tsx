@@ -74,11 +74,11 @@ const MonthView: React.FC = () => {
 
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(monthStart);
-    const startDate = monthStart;
-    const endDate = monthEnd;
+    const start_date = monthStart;
+    const end_date = monthEnd;
 
     const dateFormat = "MMMM yyyy";
-    const days = eachDayOfInterval({ start: startDate, end: endDate });
+    const days = eachDayOfInterval({ start: start_date, end: end_date });
 
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 

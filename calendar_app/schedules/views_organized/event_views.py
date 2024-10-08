@@ -12,6 +12,7 @@ from django.http import HttpResponse
 import csv
 from dateutil.parser import parse
 from dateutil.rrule import rrule, WEEKLY, DAILY, MONTHLY, YEARLY, MO, TU, WE, TH, FR, SA, SU
+from django.utils.timezone import is_aware, make_aware
 
 from ..models import Event, EventReminder, RecurringSchedule, CustomUser
 from ..serializers import EventSerializer, EventExportSerializer, RecurringScheduleSerializer
@@ -34,39 +35,13 @@ class EventViewSet(viewsets.ModelViewSet):
             data = request.data.copy()
             data['created_by'] = request.user.id
 
-            if 'start_time' not in data or 'end_time' not in data:
-                return Response(
-                    {'error': 'Start time and end time are required.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            data['event_type'] = data.pop('eventType', 'other')
-            data['is_all_day'] = data.pop('isAllDay', False)
-
-            if data.get('recurring'):
-                recurrence_rule = data.pop('recurrence_rule', {})
-
-                try:
-                    start_time = timezone.make_aware(parse(data['start_time']))
-                    end_time = timezone.make_aware(parse(data['end_time']))
-                except ValueError as e:
-                    return Response(
-                        {'error': f'Invalid datetime format: {str(e)}'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-
-                recurring_schedule = RecurringSchedule.objects.create(
-                    user=request.user,
-                    title=data['title'],
-                    start_time=start_time.time(),
-                    end_time=end_time.time(),
-                    frequency=recurrence_rule.get('frequency'),
-                    interval=recurrence_rule.get('interval', 1),
-                    start_date=data['start_date'],
-                    end_date=recurrence_rule.get('end_date'),
-                    days_of_week=recurrence_rule.get('days_of_week'),
-                )
-                data['recurring_schedule'] = recurring_schedule.id
+            # Convert field names if necessary
+            if 'start_time' in data:
+                data['start_time'] = data.pop('start_time')
+            if 'end_time' in data:
+                data['end_time'] = data.pop('end_time')
+            if 'is_all_day' in data:
+                data['is_all_day'] = data.pop('is_all_day')
 
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
@@ -75,11 +50,29 @@ class EventViewSet(viewsets.ModelViewSet):
             return Response({"data": serializer.data}, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            logger.error(f"Error creating event: {str(e)}")
             return Response(
-                {'error': 'Event creation failed due to an internal error.'},
+                {'error': f'Event creation failed due to an error: {str(e)}'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        data = request.data.copy()
+
+        # Convert field names if necessary
+        if 'start_time' in data:
+            data['start_time'] = data.pop('start_time')
+        if 'end_time' in data:
+            data['end_time'] = data.pop('end_time')
+        if 'is_all_day' in data:
+            data['is_all_day'] = data.pop('is_all_day')
+
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
 
     def get_permissions(self):
         if self.action == 'list':
@@ -175,6 +168,11 @@ class EventViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
+        return Response({"data": serializer.data})
+    
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
         return Response({"data": serializer.data})
 
     def get_rrule(self, schedule, dtstart):

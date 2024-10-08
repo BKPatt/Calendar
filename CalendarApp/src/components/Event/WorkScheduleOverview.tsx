@@ -26,7 +26,7 @@ const WorkScheduleOverview: React.FC = () => {
                         <ListItem key={day}>
                             <ListItemText
                                 primary={day}
-                                secondary={schedule ? `${schedule.startTime} - ${schedule.endTime}` : 'Off'}
+                                secondary={schedule ? `${schedule.start_time} - ${schedule.end_time}` : 'Off'}
                             />
                         </ListItem>
                     );

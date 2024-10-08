@@ -31,7 +31,7 @@ const SignIn: React.FC = () => {
             const encryptedPassword = encrypted.ciphertext.toString(CryptoJS.enc.Base64);
 
             await login(username, encryptedPassword);
-            navigate('/');
+            navigate('/'); // Navigate to home after successful login
         } catch (error) {
             console.error('Login error:', error);
             setError('Failed to sign in. Please check your credentials.');

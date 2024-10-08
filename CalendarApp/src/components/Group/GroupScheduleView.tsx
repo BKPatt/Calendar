@@ -19,7 +19,7 @@ const GroupScheduleView: React.FC<GroupScheduleViewProps> = ({ schedules, groupN
                         {schedule.user.username}
                     </Typography>
                     <Typography variant="body2" color="textSecondary">
-                        {`${schedule.dayOfWeek}: ${schedule.startTime} - ${schedule.endTime}`}
+                        {`${schedule.dayOfWeek}: ${schedule.start_time} - ${schedule.end_time}`}
                     </Typography>
                 </Paper>
             ))}

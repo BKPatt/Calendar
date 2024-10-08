@@ -17,20 +17,20 @@ import {
     Box,
 } from '@mui/material';
 import { Group as GroupIcon, Add as AddIcon } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import { groupApi } from '../../services/api/groupApi';
 import { Group } from '../../types/group';
+import { useNavigate } from 'react-router-dom';
 
 const GroupList: React.FC = () => {
     const { getGroups, createGroup } = groupApi;
 
     const { user } = useAuth();
-    const navigate = useNavigate();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newGroupName, setNewGroupName] = useState('');
     const [newGroupDescription, setNewGroupDescription] = useState('');
+    const navigate = useNavigate();
 
     const { data: groups, isLoading, error, refetch } = useApi(getGroups);
 

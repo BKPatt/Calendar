@@ -38,7 +38,7 @@ const NavTray: React.FC<NavTrayProps> = ({ isDrawerOpen, toggleDrawer }) => {
                 '& .MuiDrawer-paper': {
                     width: drawerWidth,
                     boxSizing: 'border-box',
-                    top: '64px', // Adjust based on header height if necessary
+                    top: '64px',
                 },
             }}
         >

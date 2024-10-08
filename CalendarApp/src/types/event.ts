@@ -2,12 +2,13 @@ import { Group } from "./group";
 import { User } from "./user";
 
 export type EventType = 'meeting' | 'appointment' | 'social' | 'work' | 'other';
+export const EVENT_TYPES: EventType[] = ['meeting', 'appointment', 'social', 'work', 'other'];
 
 export interface Events {
     id?: number;
     title: string;
     description?: string;
-    eventType: EventType;
+    event_type: EventType;
     location?: string;
     start_time: string;
     end_time: string;
@@ -15,9 +16,9 @@ export interface Events {
     created_by?: number;
     group?: number;
     recurrence_rule?: RecurrenceRule;
-    sharedWith: number[];
+    shared_with: number[];
     eta?: string;
-    isAllDay: boolean;
+    is_all_day: boolean;
     color: string;
     attachments?: Attachment[];
     createdAt?: string;
@@ -27,13 +28,13 @@ export interface Events {
         reminder_type: 'email' | 'push' | 'in_app';
     }>;
     recurring: boolean;
-    recurrenceEndDate?: string;
+    recurrenceend_date?: string;
 }
 
 export interface RecurrenceRule {
     frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
     interval: number;
-    endDate?: string;
+    end_date?: string;
     occurrences?: number;
     days_of_week?: string[];
 }
@@ -41,8 +42,8 @@ export interface RecurrenceRule {
 export interface Availability {
     id: number;
     user: User;
-    startTime: string;
-    endTime: string;
+    start_time: string;
+    end_time: string;
     isAvailable: boolean;
     note?: string;
 }
@@ -52,11 +53,11 @@ export interface WorkSchedule {
     userId: number;
     user: User;
     dayOfWeek: number;
-    startTime: string;
-    endTime: string;
+    start_time: string;
+    end_time: string;
     isRecurring: boolean;
     effectiveDate: string;
-    endDate?: string;
+    end_date?: string;
 }
 
 export type InvitationType = 'group' | 'event';
@@ -110,14 +111,14 @@ export interface UserDeviceToken {
     user: User;
     token: string;
     deviceType: 'ios' | 'android' | 'web';
-    isActive: boolean;
+    is_active: boolean;
     lastUsed: string;
 }
 
 export interface ApiResponse<T> {
     data: T;
     message?: string;
-    errors?: string[];
+    error?: string[];
 }
 
 export interface PaginatedResponse<T> extends ApiResponse<T> {

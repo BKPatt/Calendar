@@ -3,26 +3,30 @@ import {
     Container,
     Typography,
     Box,
-    List,
-    ListItem,
-    ListItemText,
-    ListItemAvatar,
-    Avatar,
+    Paper,
     Button,
     CircularProgress,
-    Divider,
+    TextField,
+    InputAdornment,
+    Grid2,
     Card,
     CardHeader,
     CardContent,
     CardActions,
-    Collapse,
+    Avatar,
     IconButton,
     Chip,
-    TextField,
-    InputAdornment,
-    Grid,
+    Collapse,
+    List,
+    ListItem,
+    ListItemAvatar,
+    ListItemText,
+    Divider,
     useTheme,
     useMediaQuery,
+    Dialog,
+    DialogTitle,
+    DialogContent,
 } from '@mui/material';
 import {
     Group as GroupIcon,
@@ -32,64 +36,43 @@ import {
     Person as PersonIcon,
     Event as EventIcon,
     Search as SearchIcon,
+    Public as PublicIcon,
+    Lock as LockIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { groupApi } from '../services/api/groupApi';
 import { Group } from '../types/group';
 import { Events } from '../types/event';
 import { formatDate } from '../utils/dateHelpers';
+import { useNavigate } from 'react-router-dom';
 import GroupForm from '../components/Group/GroupForm';
-
-interface PaginatedResponse<T> {
-    count: number;
-    next: string | null;
-    previous: string | null;
-    results: T;
-}
 
 const GroupScreen: React.FC = () => {
     const { getGroups, createGroup, getGroupEvents } = groupApi;
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const navigate = useNavigate();
     const { user } = useAuth();
+    const navigate = useNavigate();
+
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [expandedGroupId, setExpandedGroupId] = useState<number | null>(null);
     const [groups, setGroups] = useState<Group[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [events, setEvents] = useState<Events[]>([]);
-    const [isLoadingEvents, setIsLoadingEvents] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-
-    const fetchGroups = useCallback(async (pageNumber: number) => {
+    const fetchGroups = useCallback(async () => {
         setIsLoading(true);
         setError(null);
 
         try {
-            const params = { page: pageNumber.toString() };
-            const response = await getGroups(params);
-
-            if (response && 'results' in response && Array.isArray(response.results)) {
-                const paginatedResponse = response as PaginatedResponse<Group[][]>;
-                const newGroups: Group[] = paginatedResponse.results.flat();
-
-                setGroups((prevGroups) => {
-                    const updatedGroups = pageNumber === 1 ? newGroups : [...prevGroups, ...newGroups];
-                    return updatedGroups;
-                });
-
-                setHasMore(!!paginatedResponse.next);
+            const response = await getGroups();
+            if (Array.isArray(response.results)) {
+                setGroups(response.results.flat());
             } else {
-                console.error('Invalid data format:', response);
-                throw new Error('Invalid data format');
+                throw new Error('Invalid response format');
             }
         } catch (err) {
-            console.error('Error loading groups:', err);
             setError('Error loading groups');
         } finally {
             setIsLoading(false);
@@ -97,8 +80,8 @@ const GroupScreen: React.FC = () => {
     }, [getGroups]);
 
     useEffect(() => {
-        fetchGroups(page);
-    }, [page, fetchGroups]);
+        fetchGroups();
+    }, [fetchGroups]);
 
     const handleCreateGroup = () => {
         setIsDialogOpen(true);
@@ -108,17 +91,9 @@ const GroupScreen: React.FC = () => {
         setExpandedGroupId(expandedGroupId === groupId ? null : groupId);
     };
 
-    const loadMoreGroups = () => {
-        if (hasMore) {
-            setPage((prevPage) => prevPage + 1);
-        }
-    };
-
     const handleGroupCreated = () => {
         setIsDialogOpen(false);
-        setPage(1);
-        setGroups([]);
-        fetchGroups(1);
+        fetchGroups();
     };
 
     const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,7 +145,7 @@ const GroupScreen: React.FC = () => {
             <List>
                 {events.length > 0 ? (
                     events.map((event) => (
-                        <ListItem key={event.id} sx={{ pl: 4 }}>
+                        <ListItem key={event.id}>
                             <ListItemAvatar>
                                 <Avatar sx={{ bgcolor: event.color || theme.palette.primary.main }}>
                                     <EventIcon />
@@ -178,7 +153,7 @@ const GroupScreen: React.FC = () => {
                             </ListItemAvatar>
                             <ListItemText
                                 primary={event.title}
-                                secondary={`${formatDate(event.start_time, 'PPp')} - ${formatDate(event.end_time, 'PPp')}`}
+                                secondary={`${formatDate(event.start_time, 'PPp')} - ${formatDate(event.end_time, 'p')}`}
                             />
                         </ListItem>
                     ))
@@ -192,27 +167,24 @@ const GroupScreen: React.FC = () => {
     };
 
     return (
-        <Container maxWidth="md">
-            <Box my={4}>
-                <Grid container spacing={2} alignItems="center" mb={3}>
-                    <Grid item xs={12} sm={6}>
-                        <Typography variant="h4" component="h1">
-                            My Groups
-                        </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} container justifyContent="flex-end">
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<AddIcon />}
-                            onClick={handleCreateGroup}
-                        >
-                            Create Group
-                        </Button>
-                    </Grid>
-                </Grid>
+        <Container maxWidth="lg">
+            <Paper elevation={3} sx={{ mt: 4, p: 3, borderRadius: 2 }}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+                    <Typography variant="h4" component="h1">
+                        My Groups
+                    </Typography>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<AddIcon />}
+                        onClick={handleCreateGroup}
+                    >
+                        Create Group
+                    </Button>
+                </Box>
                 <TextField
                     fullWidth
+                    variant="outlined"
                     placeholder="Search groups..."
                     value={searchTerm}
                     onChange={handleSearch}
@@ -225,7 +197,7 @@ const GroupScreen: React.FC = () => {
                     }}
                     sx={{ mb: 3 }}
                 />
-                {isLoading && page === 1 ? (
+                {isLoading ? (
                     <Box display="flex" justifyContent="center" mt={4}>
                         <CircularProgress />
                     </Box>
@@ -234,97 +206,119 @@ const GroupScreen: React.FC = () => {
                         {error}
                     </Typography>
                 ) : filteredGroups.length > 0 ? (
-                    <>
+                    <Grid2 container spacing={3}>
                         {filteredGroups.map((group) => (
-                            <Card key={group.id} sx={{ mb: 3 }}>
-                                <CardHeader
-                                    avatar={
-                                        <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-                                            <GroupIcon />
-                                        </Avatar>
-                                    }
-                                    action={
-                                        <Chip
-                                            label={group.is_public ? 'Public' : 'Private'}
-                                            color={group.is_public ? 'success' : 'default'}
-                                            size="small"
-                                        />
-                                    }
-                                    title={group.name}
-                                    subheader={`${group.members.length} members`}
-                                />
-                                <CardActions disableSpacing>
-                                    <IconButton
-                                        onClick={() => handleExpandClick(group.id)}
-                                        aria-expanded={expandedGroupId === group.id}
-                                        aria-label="show more"
-                                    >
-                                        {expandedGroupId === group.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                                    </IconButton>
-                                    <Button
-                                        variant="outlined"
-                                        size="small"
-                                        onClick={() => navigate(`/groups/${group.id}`)}
-                                        sx={{ ml: 'auto' }}
-                                    >
-                                        View Details
-                                    </Button>
-                                </CardActions>
-                                <Collapse in={expandedGroupId === group.id} timeout="auto" unmountOnExit>
-                                    <CardContent>
-                                        <Typography paragraph>{group.description || 'No description provided'}</Typography>
-                                        <Divider sx={{ my: 2 }} />
-                                        <Typography variant="subtitle1" gutterBottom>
-                                            Members:
-                                        </Typography>
-                                        <List>
-                                            {group.members.map((member) => (
-                                                <ListItem key={member.id}>
-                                                    <ListItemAvatar>
-                                                        <Avatar>
-                                                            <PersonIcon />
-                                                        </Avatar>
-                                                    </ListItemAvatar>
-                                                    <ListItemText
-                                                        primary={`${member.username}`}
-                                                        secondary={member.email}
-                                                    />
-                                                </ListItem>
-                                            ))}
-                                        </List>
-                                        <Divider sx={{ my: 2 }} />
-                                        <Typography variant="subtitle1" gutterBottom>
-                                            Upcoming Events:
-                                        </Typography>
-                                        <GroupEvents groupId={group.id} />
-                                    </CardContent>
-                                </Collapse>
-                            </Card>
-                        ))}
-                        {hasMore && (
-                            <Box display="flex" justifyContent="center" mt={3}>
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    onClick={loadMoreGroups}
-                                    disabled={isLoading}
+                            <Grid2 key={group.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                                <Card
+                                    elevation={3}
+                                    sx={{
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        transition: 'transform 0.2s, box-shadow 0.2s',
+                                        '&:hover': {
+                                            transform: 'translateY(-5px)',
+                                            boxShadow: theme.shadows[6],
+                                        },
+                                    }}
                                 >
-                                    {isLoading ? 'Loading...' : 'Load More'}
-                                </Button>
-                            </Box>
-                        )}
-                    </>
+                                    <CardHeader
+                                        avatar={
+                                            <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                                                <GroupIcon />
+                                            </Avatar>
+                                        }
+                                        action={
+                                            <IconButton
+                                                onClick={() => handleExpandClick(group.id)}
+                                                aria-expanded={expandedGroupId === group.id}
+                                                aria-label="show more"
+                                            >
+                                                {expandedGroupId === group.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                            </IconButton>
+                                        }
+                                        title={group.name}
+                                        subheader={`${group.members.length} members`}
+                                    />
+                                    <CardContent sx={{ flexGrow: 1 }}>
+                                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                                            {group.description || 'No description provided'}
+                                        </Typography>
+                                        <Box mt={2} display="flex" justifyContent="space-between" alignItems="center">
+                                            <Chip
+                                                icon={group.is_public ? <PublicIcon /> : <LockIcon />}
+                                                label={group.is_public ? 'Public' : 'Private'}
+                                                color={group.is_public ? 'success' : 'default'}
+                                                size="small"
+                                            />
+                                            <Typography variant="caption" color="text.secondary">
+                                                Created: {formatDate(group.createdAt, 'PP')}
+                                            </Typography>
+                                        </Box>
+                                    </CardContent>
+                                    <Collapse in={expandedGroupId === group.id} timeout="auto" unmountOnExit>
+                                        <Divider />
+                                        <CardContent>
+                                            <Typography variant="subtitle1" gutterBottom>
+                                                Members:
+                                            </Typography>
+                                            <List>
+                                                {group.members.slice(0, 5).map((member) => (
+                                                    <ListItem key={member.id}>
+                                                        <ListItemAvatar>
+                                                            <Avatar>
+                                                                <PersonIcon />
+                                                            </Avatar>
+                                                        </ListItemAvatar>
+                                                        <ListItemText
+                                                            primary={`${member.firstName} ${member.lastName}`}
+                                                            secondary={member.email}
+                                                        />
+                                                    </ListItem>
+                                                ))}
+                                                {group.members.length > 5 && (
+                                                    <ListItem>
+                                                        <ListItemText primary={`+${group.members.length - 5} more members`} />
+                                                    </ListItem>
+                                                )}
+                                            </List>
+                                            <Typography variant="subtitle1" gutterBottom>
+                                                Upcoming Events:
+                                            </Typography>
+                                            <GroupEvents groupId={group.id} />
+                                        </CardContent>
+                                    </Collapse>
+                                    <CardActions>
+                                        <Button size="small" onClick={() => navigate(`/groups/${group.id}`)}>
+                                            View Details
+                                        </Button>
+                                    </CardActions>
+                                </Card>
+                            </Grid2>
+                        ))}
+                    </Grid2>
                 ) : (
                     <Typography align="center" mt={4}>
                         No groups found.
                     </Typography>
                 )}
-            </Box>
-            <GroupForm
+            </Paper>
+
+            <Dialog
                 open={isDialogOpen}
                 onClose={() => setIsDialogOpen(false)}
-                onGroupCreated={handleGroupCreated}
-            />
+                fullWidth
+                maxWidth="sm"
+            >
+                <DialogTitle>Create New Group</DialogTitle>
+                <DialogContent>
+                    <GroupForm
+                        onClose={() => setIsDialogOpen(false)}
+                        onGroupCreated={handleGroupCreated}
+                        open={isDialogOpen}
+                    />
+                </DialogContent>
+            </Dialog>
         </Container>
     );
 };

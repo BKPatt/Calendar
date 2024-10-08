@@ -11,10 +11,8 @@ import {
     useTheme,
     useMediaQuery,
 } from '@mui/material';
-import { useApi } from '../../hooks/useApi';
 import { groupApi } from '../../services/api/groupApi';
 import { Group } from '../../types/group';
-import { ApiResponse } from '../../types/event';
 
 interface GroupFormProps {
     open: boolean;
@@ -35,9 +33,6 @@ const GroupForm: React.FC<GroupFormProps> = ({ open, onClose, onGroupCreated, on
         description: group?.description || '',
         is_public: group?.is_public || false,
     });
-
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -49,8 +49,8 @@ const Event: React.FC<EventProps> = ({ event, onClick }) => {
             <EventHeader>
                 <Typography variant="h6">{event.title}</Typography>
                 <Chip
-                    label={event.eventType}
-                    color={event.eventType === 'meeting' ? 'primary' : 'secondary'}
+                    label={event.event_type}
+                    color={event.event_type === 'meeting' ? 'primary' : 'secondary'}
                     size="small"
                 />
             </EventHeader>

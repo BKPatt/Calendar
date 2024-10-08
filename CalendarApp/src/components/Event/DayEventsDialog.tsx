@@ -28,8 +28,8 @@ interface DayEventsDialogProps {
 }
 
 const DayEventsDialog: React.FC<DayEventsDialogProps> = ({ open, onClose, date, events }) => {
-    const navigate = useNavigate();
     const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
+    const navigate = useNavigate();
 
     const handleEventClick = (eventId: number) => {
         navigate(`/events/${eventId}`);
@@ -41,7 +41,6 @@ const DayEventsDialog: React.FC<DayEventsDialogProps> = ({ open, onClose, date, 
 
     const handleEventCreated = () => {
         setIsCreateEventOpen(false);
-        // TODO: Refresh events list or handle post-event creation logic here
     };
 
     return (

@@ -14,37 +14,27 @@ import {
 } from '@mui/material';
 import { AccessTime, Room, Group, Edit, Delete } from '@mui/icons-material';
 import { format } from 'date-fns';
-import { useParams, useNavigate } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
 import { eventApi } from '../../services/api/eventApi';
 import { ApiResponse, Events } from '../../types/event';
+import { useNavigate, useParams } from 'react-router-dom';
 import EventForm from './EventForm';
 
 const EventDetails: React.FC = () => {
-    const { eventId } = useParams<{ eventId: string }>();
-    const navigate = useNavigate();
+    const { eventId } = useParams();
     const [event, setEvent] = useState<Events | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
-    const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
-    const { getEvent, deleteEvent, updateEvent } = eventApi;
+    const { getEvent, deleteEvent } = eventApi;
+    const navigate = useNavigate();
 
-    const { data, isLoading, error, refetch } = useApi<ApiResponse<Events>>(() => getEvent(Number(eventId)));
-
-    const handleCreateEvent = () => {
-        setIsCreateEventOpen(true);
-    };
-
-    const handleEventCreated = () => {
-        setIsCreateEventOpen(false);
-        // TODO: Refresh events list or handle post-event creation logic here
-    };
+    const { data, isLoading, error, refetch } = useApi<Events>(() => getEvent(Number(eventId)));
 
     useEffect(() => {
         if (data) {
-            setEvent(data.data);
+            setEvent(data);
         }
     }, [data]);
 
@@ -62,7 +52,7 @@ const EventDetails: React.FC = () => {
             setSnackbarMessage('Event deleted successfully');
             setSnackbarOpen(true);
             setTimeout(() => navigate('/calendar'), 2000);
-        } catch (error) {
+        } catch {
             setSnackbarMessage('Failed to delete event');
             setSnackbarOpen(true);
         } finally {
@@ -70,15 +60,13 @@ const EventDetails: React.FC = () => {
         }
     };
 
-    const handleEventUpdate = async (updatedEvent: Partial<Events>) => {
+    const handleEventUpdate = async () => {
         try {
-            const response = await updateEvent(Number(eventId), updatedEvent);
-            setEvent(response);
+            await refetch();
             setIsEditing(false);
             setSnackbarMessage('Event updated successfully');
             setSnackbarOpen(true);
-            refetch();
-        } catch (error) {
+        } catch {
             setSnackbarMessage('Failed to update event');
             setSnackbarOpen(true);
         }
@@ -106,7 +94,7 @@ const EventDetails: React.FC = () => {
                 </Box>
             )}
             <Box sx={{ mb: 2 }}>
-                <Chip label={event.eventType} color="primary" />
+                <Chip label={event.event_type} color="primary" />
             </Box>
             <Typography variant="body1" paragraph>
                 {event.description}
@@ -121,7 +109,7 @@ const EventDetails: React.FC = () => {
                 Shared with:
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                {event.sharedWith.map((userId: number) => (
+                {event.shared_with.map((userId: number) => (
                     <Chip key={userId} label={`User ID: ${userId}`} />
                 ))}
             </Box>
@@ -134,13 +122,11 @@ const EventDetails: React.FC = () => {
                 </Button>
             </Box>
 
-            {isEditing && (
-                <EventForm
-                    open={isCreateEventOpen}
-                    onClose={() => setIsCreateEventOpen(false)}
-                    onEventCreated={handleEventCreated}
-                />
-            )}
+            <EventForm
+                open={isEditing}
+                onClose={() => setIsEditing(false)}
+                onEventCreated={handleEventUpdate}
+            />
 
             <Dialog
                 open={isDeleting}

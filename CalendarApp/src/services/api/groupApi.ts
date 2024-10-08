@@ -20,20 +20,24 @@ export const groupApi = {
      * @returns Promise with a paginated response of Groups
      */
     getGroups: async (params?: Record<string, string>): Promise<PaginatedResponse<Group[]>> => {
-        const user = await getCurrentUser();
+        try {
+            const user = await getCurrentUser();
 
-        if (!user || !user.id) {
-            throw new Error('User is not authenticated');
-        }
+            if (!user || !user.id) {
+                throw new Error('User is not authenticated');
+            }
 
-        const queryParams = new URLSearchParams({ ...params, user_id: user.id.toString() });
-        const fullEndpoint = `/groups/?${queryParams.toString()}`;
-        const response = await getPaginatedResults<Group>(fullEndpoint);
+            const queryParams = new URLSearchParams({ ...params, user_id: user.id.toString() });
+            const fullEndpoint = `/groups/?${queryParams.toString()}`;
+            const response = await getPaginatedResults<Group>(fullEndpoint);
 
-        if (response && typeof response === 'object' && 'results' in response) {
-            return response as PaginatedResponse<Group[]>;
-        } else {
-            throw new Error('Invalid paginated response structure');
+            if (response && typeof response === 'object' && 'results' in response) {
+                return response as PaginatedResponse<Group[]>;
+            } else {
+                throw new Error('Invalid paginated response structure');
+            }
+        } catch (error) {
+            throw new Error(handleApiError(error).join(', '));
         }
     },
 
@@ -50,7 +54,10 @@ export const groupApi = {
                 message: 'Group fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Group,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -64,7 +71,10 @@ export const groupApi = {
             const user = await getCurrentUser();
 
             if (!user || !user.id) {
-                throw new Error('User is not authenticated');
+                return {
+                    data: {} as Group,
+                    error: ['User is not authenticated'],
+                };
             }
 
             const fullGroupData = { ...groupData, admin: user.id };
@@ -75,7 +85,10 @@ export const groupApi = {
                 message: 'Group created successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Group,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -93,7 +106,10 @@ export const groupApi = {
                 message: 'Group updated successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as Group,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -102,11 +118,18 @@ export const groupApi = {
      * @param groupId - ID of the group to delete
      * @returns Promise that resolves when the group is deleted
      */
-    deleteGroup: async (groupId: number): Promise<void> => {
+    deleteGroup: async (groupId: number): Promise<ApiResponse<void>> => {
         try {
             await apiRequest(`/groups/${groupId}/`, 'DELETE');
+            return {
+                data: undefined,
+                message: 'Group deleted successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -123,7 +146,10 @@ export const groupApi = {
                 message: 'Group events fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: [],
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -135,9 +161,15 @@ export const groupApi = {
     getGroupSchedule: async (groupId: number): Promise<ApiResponse<WorkSchedule[]>> => {
         try {
             const response = await apiRequest<WorkSchedule[]>(`/groups/${groupId}/schedules/`, 'GET');
-            return response;
+            return {
+                data: response.data,
+                message: 'Group schedule fetched successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: [],
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -147,11 +179,18 @@ export const groupApi = {
      * @param userId - ID of the user to add to the group
      * @returns Promise that resolves when the member is added
      */
-    addGroupMember: async (groupId: number, userId: number): Promise<void> => {
+    addGroupMember: async (groupId: number, userId: number): Promise<ApiResponse<void>> => {
         try {
             await apiRequest(`/groups/${groupId}/members/`, 'POST', { user_id: userId });
+            return {
+                data: undefined,
+                message: 'Member added successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -161,11 +200,18 @@ export const groupApi = {
      * @param userId - ID of the user to remove from the group
      * @returns Promise that resolves when the member is removed
      */
-    removeGroupMember: async (groupId: number, userId: number): Promise<void> => {
+    removeGroupMember: async (groupId: number, userId: number): Promise<ApiResponse<void>> => {
         try {
             await apiRequest(`/groups/${groupId}/members/${userId}/`, 'DELETE');
+            return {
+                data: undefined,
+                message: 'Member removed successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -182,7 +228,10 @@ export const groupApi = {
                 message: 'Group members fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: [],
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -191,11 +240,18 @@ export const groupApi = {
      * @param groupId - ID of the public group to join
      * @returns Promise that resolves when the user has joined the group
      */
-    joinGroup: async (groupId: number): Promise<void> => {
+    joinGroup: async (groupId: number): Promise<ApiResponse<void>> => {
         try {
             await apiRequest(`/groups/${groupId}/join/`, 'POST');
+            return {
+                data: undefined,
+                message: 'Group joined successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -204,25 +260,32 @@ export const groupApi = {
      * @param groupId - ID of the group to leave
      * @returns Promise that resolves when the user has left the group
      */
-    leaveGroup: async (groupId: number): Promise<void> => {
+    leaveGroup: async (groupId: number): Promise<ApiResponse<void>> => {
         try {
             await apiRequest(`/groups/${groupId}/leave/`, 'POST');
+            return {
+                data: undefined,
+                message: 'Group left successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
     /**
      * Fetch the common availability for a group
      * @param groupId - ID of the group to fetch common availability for
-     * @param startDate - Start date for the availability range
-     * @param endDate - End date for the availability range
+     * @param start_date - Start date for the availability range
+     * @param end_date - End date for the availability range
      * @returns Promise with an array of available time slots
      */
-    getGroupAvailability: async (groupId: number, startDate: string, endDate: string): Promise<ApiResponse<{ start: string, end: string }[]>> => {
+    getGroupAvailability: async (groupId: number, start_date: string, end_date: string): Promise<ApiResponse<{ start: string, end: string }[]>> => {
         try {
             const response = await apiRequest<{ start: string, end: string }[]>(
-                `/groups/${groupId}/availability/?start_date=${startDate}&end_date=${endDate}`,
+                `/groups/${groupId}/availability/?start_date=${start_date}&end_date=${end_date}`,
                 'GET'
             );
             return {
@@ -230,7 +293,10 @@ export const groupApi = {
                 message: 'Group availability fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: [],
+                error: handleApiError(error),
+            };
         }
     },
 };

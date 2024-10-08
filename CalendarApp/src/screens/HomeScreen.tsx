@@ -4,28 +4,27 @@ import {
     Typography,
     Box,
     Paper,
-    Grid2,
     Button,
     CircularProgress,
     Dialog,
     DialogContent,
+    useTheme,
+    Grid2,
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
 import {
     Add as AddIcon,
     Group as GroupIcon,
+    Share as ShareIcon,
     Edit as EditIcon,
     PersonAdd as PersonAddIcon,
-    Event as EventIcon,
-    Share as ShareIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
 import { eventApi } from '../services/api/eventApi';
 import { groupApi } from '../services/api/groupApi';
 import { Events } from '../types/event';
 import { startOfMonth, endOfMonth, format, addMonths } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import Calendar from '../components/Calendar/Calendar';
 import EventForm from '../components/Event/EventForm';
 import UpcomingEventsWidget from '../components/Event/UpcomingEventsWidget';
@@ -37,10 +36,9 @@ import GroupOverview from '../components/Group/GroupOverview';
 const HomeScreen: React.FC = () => {
     const { getEvents, getUpcomingEvents } = eventApi;
     const { getGroups } = groupApi;
-
     const theme = useTheme();
-    const navigate = useNavigate();
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     const [events, setEvents] = useState<Events[]>([]);
     const [isLoadingEvents, setIsLoadingEvents] = useState<boolean>(true);
@@ -58,11 +56,11 @@ const HomeScreen: React.FC = () => {
     const fetchEventsForMonth = async (month: Date) => {
         setIsLoadingEvents(true);
         try {
-            const startDate = format(startOfMonth(month), 'yyyy-MM-dd');
-            const endDate = format(endOfMonth(month), 'yyyy-MM-dd');
+            const start_date = format(startOfMonth(month), 'yyyy-MM-dd');
+            const end_date = format(endOfMonth(month), 'yyyy-MM-dd');
             const response = await getEvents({
-                start_date: startDate,
-                end_date: endDate,
+                start_date: start_date,
+                end_date: end_date,
                 user_id: user?.id?.toString() || '',
             });
             setEvents(response.data || []);
@@ -165,6 +163,7 @@ const HomeScreen: React.FC = () => {
                                     changeMonth={changeMonth}
                                     goToToday={goToToday}
                                     handleCreateEvent={handleCreateEvent}
+                                    viewMode={'month'}
                                 />
                             )}
                         </Paper>

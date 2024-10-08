@@ -1,28 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
     Box,
     Typography,
-    IconButton,
     Paper,
     Grid2,
-    Button,
     useTheme,
     useMediaQuery,
-    Tooltip,
-    Card,
-    CardActionArea,
-    Dialog,
-    DialogContent,
 } from '@mui/material';
-import {
-    ChevronLeft,
-    ChevronRight,
-    Today as TodayIcon,
-    Add as AddIcon,
-    Event as EventIcon,
-    Repeat as RepeatIcon,
-} from '@mui/icons-material';
-import { styled } from '@mui/system';
 import {
     startOfWeek,
     endOfWeek,
@@ -33,84 +17,18 @@ import {
     isSameDay,
     format,
     isToday,
-    isWithinInterval,
-    parseISO,
-    startOfDay,
-    endOfDay,
-    areIntervalsOverlapping,
 } from 'date-fns';
 import { Events } from '../../types/event';
-import { useApi } from '../../hooks/useApi';
-import { eventApi } from '../../services/api/eventApi';
-import EventForm from '../Event/EventForm';
-
-const CalendarContainer = styled(Paper)(({ theme }) => ({
-    padding: theme.spacing(3),
-    borderRadius: '12px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-    backgroundColor: theme.palette.background.default,
-}));
-
-const CalendarHeader = styled(Box)(({ theme }) => ({
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing(3),
-}));
-
-interface DayCellProps {
-    isToday?: boolean;
-    isSelected?: boolean;
-    isCurrentMonth?: boolean;
-}
-
-const DayCell = styled(Card, {
-    shouldForwardProp: (prop) =>
-        prop !== 'isToday' && prop !== 'isSelected' && prop !== 'isCurrentMonth',
-})<DayCellProps>(({ theme, isToday, isSelected, isCurrentMonth }) => ({
-    height: '100%',
-    aspectRatio: '1 / 1',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    cursor: 'pointer',
-    backgroundColor: isSelected
-        ? theme.palette.primary.main
-        : isToday
-            ? theme.palette.primary.light
-            : theme.palette.background.paper,
-    color: isSelected
-        ? theme.palette.primary.contrastText
-        : isToday
-            ? theme.palette.primary.contrastText
-            : theme.palette.text.primary,
-    opacity: isCurrentMonth ? 1 : 0.5,
-    borderRadius: '8px',
-    boxShadow: isToday ? '0px 4px 10px rgba(0, 0, 0, 0.2)' : '0px 1px 5px rgba(0, 0, 0, 0.1)',
-    transition: 'transform 0.3s ease',
-    '&:hover': {
-        backgroundColor: isSelected
-            ? theme.palette.primary.dark
-            : theme.palette.action.hover,
-        transform: 'scale(1.03)',
-    },
-}));
-
-const DayNumber = styled(Typography, {
-    shouldForwardProp: (prop) => prop !== 'isToday',
-})<{ isToday?: boolean }>(({ theme, isToday }) => ({
-    fontWeight: isToday ? 'bold' : 'normal',
-    color: isToday ? theme.palette.secondary.main : theme.palette.text.primary,
-}));
 
 interface CalendarProps {
     currentMonth: Date;
-    events: Events[] | null;
+    events: Events[];
     onDateClick: (date: Date) => void;
     onEventClick: (eventId: number) => void;
     changeMonth: (amount: number) => void;
     goToToday: () => void;
     handleCreateEvent: () => void;
+    viewMode: 'day' | 'week' | 'month';
 }
 
 const Calendar: React.FC<CalendarProps> = ({
@@ -118,155 +36,161 @@ const Calendar: React.FC<CalendarProps> = ({
     events,
     onDateClick,
     onEventClick,
-    changeMonth,
-    goToToday,
-    handleCreateEvent,
+    viewMode,
 }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const [isEventFormOpen, setIsEventFormOpen] = useState(false);
-    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-    const { getEvents } = eventApi
 
-    const { refetch } = useApi<Events[]>(() =>
-        getEvents({
-            start_date: format(startOfMonth(currentMonth), 'yyyy-MM-dd'),
-            end_date: format(endOfMonth(currentMonth), 'yyyy-MM-dd'),
-        })
-    );
+    const renderDayContent = (day: Date) => {
+        const dayEvents = events.filter(event =>
+            isSameDay(new Date(event.start_time), day)
+        );
 
-    const calendarDays = useMemo(() => {
+        return (
+            <Box
+                onClick={() => onDateClick(day)}
+                sx={{
+                    height: '100%',
+                    p: 1,
+                    cursor: 'pointer',
+                    '&:hover': { backgroundColor: theme.palette.action.hover },
+                }}
+            >
+                <Typography
+                    variant="body2"
+                    sx={{
+                        fontWeight: isToday(day) ? 'bold' : 'normal',
+                        color: isToday(day) ? theme.palette.primary.main : 'inherit',
+                    }}
+                >
+                    {format(day, 'd')}
+                </Typography>
+                {dayEvents.slice(0, 3).map((event, index) => (
+                    <Box
+                        key={event.id}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEventClick(event.id!);
+                        }}
+                        sx={{
+                            backgroundColor: event.color || theme.palette.primary.main,
+                            color: theme.palette.getContrastText(event.color || theme.palette.primary.main),
+                            p: 0.5,
+                            borderRadius: 1,
+                            mb: 0.5,
+                            fontSize: isMobile ? '0.7rem' : '0.8rem',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                        }}
+                    >
+                        {event.title}
+                    </Box>
+                ))}
+                {dayEvents.length > 3 && (
+                    <Typography variant="caption" color="text.secondary">
+                        +{dayEvents.length - 3} more
+                    </Typography>
+                )}
+            </Box>
+        );
+    };
+
+    const renderMonthView = () => {
         const monthStart = startOfMonth(currentMonth);
         const monthEnd = endOfMonth(monthStart);
-        const startDate = startOfWeek(monthStart);
-        const endDate = endOfWeek(monthEnd);
+        const start_date = startOfWeek(monthStart);
+        const end_date = endOfWeek(monthEnd);
 
-        return eachDayOfInterval({ start: startDate, end: endDate }).map((day) => {
-            const dayEvents = events?.filter((event) => {
-                const eventStart = parseISO(event.start_time);
-                return isSameDay(day, eventStart);
-            }) || [];
+        const dateFormat = "EEE";
+        const rows = [];
 
-            return {
-                date: day,
-                events: dayEvents,
-            };
-        });
-    }, [currentMonth, events]);
+        let days = [];
+        let day = start_date;
+        let formattedDate = "";
 
-    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        while (day <= end_date) {
+            for (let i = 0; i < 7; i++) {
+                formattedDate = format(day, dateFormat);
+                const cloneDay = day;
+                days.push(
+                    <Grid2 size={{ xs: 12 / 7 }} key={day.toString()}>
+                        <Paper
+                            elevation={1}
+                            sx={{
+                                height: isMobile ? 100 : 150,
+                                opacity: !isSameMonth(day, monthStart) ? 0.5 : 1,
+                            }}
+                        >
+                            {renderDayContent(cloneDay)}
+                        </Paper>
+                    </Grid2>
+                );
+                day = new Date(day.getTime() + 24 * 60 * 60 * 1000); // add 1 day
+            }
+            rows.push(
+                <Grid2 container key={day.toString()} spacing={1}>
+                    {days}
+                </Grid2>
+            );
+            days = [];
+        }
 
-    const handleDateClick = (date: Date) => {
-        setSelectedDate(date);
-        onDateClick(date);
+        return (
+            <Box>
+                <Grid2 container spacing={1}>
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((dayName) => (
+                        <Grid2 size={{ xs: 12 / 7 }} key={dayName}>
+                            <Typography variant="subtitle2" align="center">
+                                {dayName}
+                            </Typography>
+                        </Grid2>
+                    ))}
+                </Grid2>
+                {rows}
+            </Box>
+        );
     };
 
-    const handleCloseEventForm = () => {
-        setIsEventFormOpen(false);
-    };
+    const renderWeekView = () => {
+        const weekStart = startOfWeek(currentMonth);
+        const weekEnd = endOfWeek(weekStart);
+        const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
-    const handleEventCreated = () => {
-        refetch();
-        handleCloseEventForm();
-    };
-
-    return (
-        <CalendarContainer>
-            <CalendarHeader>
-                <Box display="flex" alignItems="center">
-                    <IconButton onClick={() => changeMonth(-1)}>
-                        <ChevronLeft />
-                    </IconButton>
-                    <Typography variant="h5" sx={{ mx: 2 }}>
-                        {format(currentMonth, 'MMMM yyyy')}
-                    </Typography>
-                    <IconButton onClick={() => changeMonth(1)}>
-                        <ChevronRight />
-                    </IconButton>
-                </Box>
-                <Box>
-                    <Button startIcon={<TodayIcon />} onClick={goToToday} sx={{ mr: 1 }}>
-                        Today
-                    </Button>
-                    <Button startIcon={<AddIcon />} variant="contained" onClick={handleCreateEvent}>
-                        Create Event
-                    </Button>
-                </Box>
-            </CalendarHeader>
-
+        return (
             <Grid2 container spacing={1}>
-                {weekDays.map((day) => (
-                    <Grid2 key={day} size={12 / 7} display="flex" justifyContent="center">
-                        <Typography align="center" variant="subtitle2">
-                            {isMobile ? day.charAt(0) : day}
-                        </Typography>
+                {days.map((day) => (
+                    <Grid2 size={{ xs: 12 / 7 }} key={day.toString()}>
+                        <Paper elevation={1} sx={{ height: 200 }}>
+                            {renderDayContent(day)}
+                        </Paper>
                     </Grid2>
                 ))}
             </Grid2>
+        );
+    };
 
-            <Grid2 container spacing={1}>
-                {calendarDays.map(({ date, events }) => (
-                    <Grid2 key={date.toISOString()} size={12 / 7}>
-                        <CardActionArea onClick={() => handleDateClick(date)}>
-                            <DayCell
-                                isToday={isToday(date)}
-                                isSelected={selectedDate ? isSameDay(date, selectedDate) : false}
-                                isCurrentMonth={isSameMonth(date, currentMonth)}
-                            >
-                                <DayNumber variant="body2" isToday={isToday(date)}>
-                                    {format(date, 'd')}
-                                </DayNumber>
-                                {events.length > 0 ? (
-                                    events.slice(0, 3).map((event, index) => (
-                                        <Tooltip key={index} title={event.title} arrow>
-                                            <Box
-                                                display="flex"
-                                                alignItems="center"
-                                                mt={0.5}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onEventClick(event.id!);
-                                                }}
-                                            >
-                                                {event.recurring ? (
-                                                    <RepeatIcon style={{ color: event.color, marginRight: 4, fontSize: 16 }} />
-                                                ) : (
-                                                    <EventIcon style={{ color: event.color, marginRight: 4, fontSize: 16 }} />
-                                                )}
-                                                {!isMobile && (
-                                                    <Typography variant="caption" noWrap>
-                                                        {event.title}
-                                                    </Typography>
-                                                )}
-                                            </Box>
-                                        </Tooltip>
-                                    ))
-                                ) : (
-                                    <Typography variant="caption" color="text.secondary">
-                                    </Typography>
-                                )}
-                                {events.length > 3 && (
-                                    <Typography variant="caption" color="text.secondary">
-                                        +{events.length - 3} more
-                                    </Typography>
-                                )}
-                            </DayCell>
-                        </CardActionArea>
-                    </Grid2>
-                ))}
-            </Grid2>
+    const renderDayView = () => {
+        return (
+            <Paper elevation={1} sx={{ height: 600, p: 2 }}>
+                {renderDayContent(currentMonth)}
+            </Paper>
+        );
+    };
 
-            <Dialog open={isEventFormOpen} onClose={handleCloseEventForm} fullWidth maxWidth="sm">
-                <DialogContent>
-                    <EventForm
-                        onClose={handleCloseEventForm}
-                        onEventCreated={handleEventCreated}
-                        open={false}
-                    />
-                </DialogContent>
-            </Dialog>
-        </CalendarContainer>
-    );
+    const calendarContent = useMemo(() => {
+        switch (viewMode) {
+            case 'day':
+                return renderDayView();
+            case 'week':
+                return renderWeekView();
+            case 'month':
+            default:
+                return renderMonthView();
+        }
+    }, [viewMode, currentMonth, events, isMobile]);
+
+    return <Box>{calendarContent}</Box>;
 };
 
 export default Calendar;

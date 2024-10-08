@@ -169,6 +169,7 @@ class Event(models.Model):
     EVENT_TYPES = (
         ('meeting', 'Meeting'),
         ('appointment', 'Appointment'),
+        ('social', 'Social'),
         ('reminder', 'Reminder'),
         ('work', 'Work'),
         ('other', 'Other'),

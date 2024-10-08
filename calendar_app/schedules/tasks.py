@@ -168,7 +168,7 @@ def sync_google_calendar(user, token):
         now = timezone.now().isoformat()
         events_result = service.events().list(calendarId='primary', timeMin=now,
                                               maxResults=100, singleEvents=True,
-                                              orderBy='startTime').execute()
+                                              orderBy='start_time').execute()
         events = events_result.get('items', [])
 
         for event in events:

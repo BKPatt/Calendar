@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     Container,
     Typography,
     Box,
-    Grid,
     Paper,
     TextField,
     Select,
@@ -15,69 +14,73 @@ import {
     CardContent,
     CardActions,
     Avatar,
-    IconButton,
     Chip,
     Divider,
     Pagination,
-    Skeleton,
     useTheme,
     useMediaQuery,
+    Grid2,
+    Button,
+    CircularProgress,
 } from '@mui/material';
 import {
     Event as EventIcon,
     Search as SearchIcon,
     ArrowForward as ArrowForwardIcon,
-    FilterList as FilterListIcon,
+    AccessTime as TimeIcon,
+    Room as LocationIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { eventApi } from '../services/api/eventApi';
-import { Events } from '../types/event';
-import { formatDate } from '../utils/dateHelpers';
+import { EVENT_TYPES, Events } from '../types/event';
+import { format, parseISO } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 const UpcomingEventsScreen: React.FC = () => {
+    const navigate = useNavigate();
     const { getUpcomingEvents } = eventApi;
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState('date');
     const [filterType, setFilterType] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 9;
-    const { data: events, isLoading, error, refetch } = useApi<Events[]>(getUpcomingEvents);
+    const itemsPerPage = 6;
 
-    const [filteredEvents, setFilteredEvents] = useState<Events[]>([]);
+    const { data: events, isLoading, error } = useApi<Events[]>(getUpcomingEvents);
 
-    useEffect(() => {
-        if (events) {
-            let filtered = events;
+    const filteredEvents = useMemo(() => {
+        if (!events) return [];
+        let filtered = events;
 
-            if (searchTerm) {
-                filtered = filtered.filter(
-                    (event) =>
-                        event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        (event.description &&
-                            event.description.toLowerCase().includes(searchTerm.toLowerCase()))
-                );
-            }
-
-            if (filterType !== 'all') {
-                filtered = filtered.filter((event) => event.eventType === filterType);
-            }
-
-            filtered.sort((a, b) => {
-                if (sortBy === 'date') {
-                    return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
-                } else {
-                    return a.title.localeCompare(b.title);
-                }
-            });
-
-            setFilteredEvents(filtered);
-            setCurrentPage(1);
+        if (searchTerm) {
+            filtered = filtered.filter(
+                (event) =>
+                    event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    (event.description && event.description.toLowerCase().includes(searchTerm.toLowerCase()))
+            );
         }
+
+        if (filterType !== 'all') {
+            filtered = filtered.filter((event) => event.event_type === filterType);
+        }
+
+        filtered.sort((a, b) => {
+            if (sortBy === 'date') {
+                return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+            } else {
+                return a.title.localeCompare(b.title);
+            }
+        });
+
+        return filtered;
     }, [events, searchTerm, sortBy, filterType]);
+
+    const paginatedEvents = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        return filteredEvents.slice(startIndex, endIndex);
+    }, [filteredEvents, currentPage]);
 
     const handleEventClick = (eventId: number) => {
         navigate(`/events/${eventId}`);
@@ -87,126 +90,91 @@ const UpcomingEventsScreen: React.FC = () => {
         setCurrentPage(page);
     };
 
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const displayedEvents = filteredEvents.slice(startIndex, endIndex);
-
     if (isLoading) {
         return (
-            <Container maxWidth="lg">
-                <Box my={4}>
-                    <Typography variant="h4" component="h1" gutterBottom>
-                        Upcoming Events
-                    </Typography>
-                    <Grid container spacing={3}>
-                        {[...Array(9)].map((_, index) => (
-                            <Grid item xs={12} sm={6} md={4} key={index}>
-                                <Card>
-                                    <CardHeader
-                                        avatar={
-                                            <Skeleton variant="circular" width={40} height={40} />
-                                        }
-                                        title={<Skeleton variant="text" width="80%" />}
-                                        subheader={<Skeleton variant="text" width="40%" />}
-                                    />
-                                    <CardContent>
-                                        <Skeleton variant="text" />
-                                        <Skeleton variant="text" width="60%" />
-                                    </CardContent>
-                                    <CardActions>
-                                        <Skeleton variant="circular" width={24} height={24} />
-                                    </CardActions>
-                                </Card>
-                            </Grid>
-                        ))}
-                    </Grid>
-                </Box>
-            </Container>
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+                <CircularProgress />
+            </Box>
         );
     }
 
     if (error) {
         return (
             <Container maxWidth="lg">
-                <Box my={4}>
-                    <Typography variant="h4" component="h1" gutterBottom>
-                        Upcoming Events
-                    </Typography>
-                    <Typography variant="body1" color="error">
-                        Error: {error}
-                    </Typography>
-                </Box>
+                <Typography variant="h4" component="h1" gutterBottom color="error">
+                    Error: {error}
+                </Typography>
             </Container>
         );
     }
 
     return (
         <Container maxWidth="lg">
-            <Box my={4}>
-                <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
-                    <Typography variant="h4" component="h1">
-                        Upcoming Events
-                    </Typography>
-                    <Box display="flex" alignItems="center">
+            <Paper elevation={3} sx={{ mt: 4, p: 3, borderRadius: 2 }}>
+                <Typography variant="h4" component="h1" gutterBottom>
+                    Upcoming Events
+                </Typography>
+                <Grid2 container spacing={2} alignItems="center" sx={{ mb: 3 }}>
+                    <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
                         <TextField
+                            fullWidth
                             variant="outlined"
                             placeholder="Search events..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            InputProps={{
-                                startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />,
+                            slotProps={{
+                                input: {
+                                    startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />,
+                                },
                             }}
-                            sx={{ mr: 2 }}
                         />
-                        {!isMobile && (
-                            <>
-                                <FormControl variant="outlined" sx={{ minWidth: 120, mr: 2 }}>
-                                    <InputLabel>Sort By</InputLabel>
-                                    <Select
-                                        value={sortBy}
-                                        onChange={(e) => setSortBy(e.target.value as string)}
-                                        label="Sort By"
-                                    >
-                                        <MenuItem value="date">Date</MenuItem>
-                                        <MenuItem value="title">Title</MenuItem>
-                                    </Select>
-                                </FormControl>
-                                <FormControl variant="outlined" sx={{ minWidth: 120 }}>
-                                    <InputLabel>Filter</InputLabel>
-                                    <Select
-                                        value={filterType}
-                                        onChange={(e) => setFilterType(e.target.value as string)}
-                                        label="Filter"
-                                    >
-                                        <MenuItem value="all">All</MenuItem>
-                                        <MenuItem value="meeting">Meeting</MenuItem>
-                                        <MenuItem value="appointment">Appointment</MenuItem>
-                                        <MenuItem value="reminder">Reminder</MenuItem>
-                                        <MenuItem value="other">Other</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </>
-                        )}
-                        {isMobile && (
-                            <IconButton color="primary">
-                                <FilterListIcon />
-                            </IconButton>
-                        )}
-                    </Box>
-                </Box>
+                    </Grid2>
+                    <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
+                        <FormControl fullWidth variant="outlined">
+                            <InputLabel id="sort-by-label">Sort By</InputLabel>
+                            <Select
+                                labelId="sort-by-label"
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value as string)}
+                                label="Sort By"
+                            >
+                                <MenuItem value="date">Date</MenuItem>
+                                <MenuItem value="title">Title</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Grid2>
+                    <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
+                        <FormControl fullWidth variant="outlined">
+                            <InputLabel id="filter-type-label">Filter</InputLabel>
+                            <Select
+                                labelId="filter-type-label"
+                                value={filterType}
+                                onChange={(e) => setFilterType(e.target.value as string)}
+                                label="Filter"
+                            >
+                                {EVENT_TYPES.map((type) => (
+                                    <MenuItem key={type} value={type}>
+                                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Grid2>
+                </Grid2>
 
-                <Grid container spacing={3}>
-                    {displayedEvents.map((event) => (
-                        <Grid item xs={12} sm={6} md={4} key={event.id}>
+                <Grid2 container spacing={3}>
+                    {paginatedEvents.map((event) => (
+                        <Grid2 key={event.id} size={{ xs: 12, sm: 6, md: 4 }}>
                             <Card
                                 elevation={3}
                                 sx={{
                                     height: '100%',
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    transition: 'transform 0.2s',
+                                    transition: 'transform 0.2s, box-shadow 0.2s',
                                     '&:hover': {
                                         transform: 'translateY(-5px)',
+                                        boxShadow: theme.shadows[6],
                                     },
                                 }}
                             >
@@ -217,42 +185,50 @@ const UpcomingEventsScreen: React.FC = () => {
                                         </Avatar>
                                     }
                                     title={event.title}
-                                    subheader={formatDate(event.start_time, 'PPp')}
+                                    subheader={format(parseISO(event.start_time), 'PPP')}
                                 />
-                                <CardContent>
-                                    <Typography variant="body2" color="text.secondary">
+                                <CardContent sx={{ flexGrow: 1 }}>
+                                    <Typography variant="body2" color="text.secondary" gutterBottom>
                                         {event.description}
                                     </Typography>
+                                    <Box display="flex" alignItems="center" mt={1}>
+                                        <TimeIcon fontSize="small" sx={{ mr: 1 }} />
+                                        <Typography variant="body2">
+                                            {format(parseISO(event.start_time), 'p')} - {format(parseISO(event.end_time), 'p')}
+                                        </Typography>
+                                    </Box>
+                                    {event.location && (
+                                        <Box display="flex" alignItems="center" mt={1}>
+                                            <LocationIcon fontSize="small" sx={{ mr: 1 }} />
+                                            <Typography variant="body2">{event.location}</Typography>
+                                        </Box>
+                                    )}
                                     <Box mt={2}>
                                         <Chip
                                             size="small"
-                                            label={event.eventType}
-                                            sx={{ mr: 1, bgcolor: theme.palette.primary.light }}
+                                            label={event.event_type}
+                                            color="primary"
+                                            variant="outlined"
                                         />
-                                        {event.group && (
-                                            <Chip size="small" label={event.group} sx={{ bgcolor: theme.palette.secondary.light }} />
-                                        )}
                                     </Box>
                                 </CardContent>
-                                <Box sx={{ flexGrow: 1 }} />
                                 <Divider />
                                 <CardActions>
-                                    <IconButton onClick={() => handleEventClick(event.id!)}>
-                                        <ArrowForwardIcon />
-                                    </IconButton>
+                                    <Button
+                                        size="small"
+                                        endIcon={<ArrowForwardIcon />}
+                                        onClick={() => handleEventClick(event.id!)}
+                                    >
+                                        View Details
+                                    </Button>
                                 </CardActions>
                             </Card>
-                        </Grid>
+                        </Grid2>
                     ))}
-                </Grid>
+                </Grid2>
 
                 {filteredEvents.length === 0 && (
-                    <Box
-                        display="flex"
-                        justifyContent="center"
-                        alignItems="center"
-                        minHeight="200px"
-                    >
+                    <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
                         <Typography variant="h6" color="text.secondary">
                             No upcoming events found.
                         </Typography>
@@ -269,7 +245,7 @@ const UpcomingEventsScreen: React.FC = () => {
                         />
                     </Box>
                 )}
-            </Box>
+            </Paper>
         </Container>
     );
 };

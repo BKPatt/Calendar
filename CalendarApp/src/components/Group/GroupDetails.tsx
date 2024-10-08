@@ -20,7 +20,6 @@ import { Group } from '../../types/group';
 import { WorkSchedule, Events } from '../../types/event';
 import GroupScheduleView from '../../components/Group/GroupScheduleView';
 import { User } from '../../types/user';
-import { eventApi } from '../../services/api/eventApi';
 
 interface TabPanelProps {
     children?: React.ReactNode;

@@ -23,7 +23,10 @@ export const userApi = {
                 message: 'User profile fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as UserProfile,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -35,13 +38,16 @@ export const userApi = {
      */
     updateUserProfile: async (userId: number, userData: Partial<UserProfile>): Promise<ApiResponse<UserProfile>> => {
         try {
-            const response = await apiRequest<UserProfile>(`/users/${userId}/update_profile/`, 'POST', userData);
+            const response = await apiRequest<UserProfile>(`/users/${userId}/update_profile/`, 'PATCH', userData);
             return {
                 data: response.data,
                 message: 'User profile updated successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as UserProfile,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -51,11 +57,18 @@ export const userApi = {
      * @param newPassword - User's new password
      * @returns Promise that resolves when the password is changed successfully
      */
-    changePassword: async (oldPassword: string, newPassword: string): Promise<void> => {
+    changePassword: async (oldPassword: string, newPassword: string): Promise<ApiResponse<void>> => {
         try {
             await apiRequest('/users/change-password/', 'POST', { old_password: oldPassword, new_password: newPassword });
+            return {
+                data: undefined,
+                message: 'Password changed successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -63,11 +76,18 @@ export const userApi = {
      * Delete user's account
      * @returns Promise that resolves when the account is deleted successfully
      */
-    deleteAccount: async (): Promise<void> => {
+    deleteAccount: async (): Promise<ApiResponse<void>> => {
         try {
             await apiRequest('/users/delete-account/', 'DELETE');
+            return {
+                data: undefined,
+                message: 'Account deleted successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -84,7 +104,10 @@ export const userApi = {
                 message: 'User registered successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as AuthResponse,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -101,7 +124,10 @@ export const userApi = {
                 message: 'User logged in successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as AuthResponse,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -109,11 +135,18 @@ export const userApi = {
      * Log out the current user
      * @returns Promise that resolves when the user is logged out successfully
      */
-    logout: async (): Promise<void> => {
+    logout: async (): Promise<ApiResponse<void>> => {
         try {
             await apiRequest('/auth/logout/', 'POST');
+            return {
+                data: undefined,
+                message: 'User logged out successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -130,7 +163,10 @@ export const userApi = {
                 message: 'Token refreshed successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: { access: '' },
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -146,7 +182,10 @@ export const userApi = {
                 message: 'Current user fetched successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as User,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -163,7 +202,10 @@ export const userApi = {
                 message: 'Notification preferences updated successfully',
             };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: {} as UserProfile,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -172,11 +214,18 @@ export const userApi = {
      * @param email - User's email address
      * @returns Promise that resolves when the password reset email is sent
      */
-    requestPasswordReset: async (email: string): Promise<void> => {
+    requestPasswordReset: async (email: string): Promise<ApiResponse<void>> => {
         try {
             await apiRequest('/auth/password-reset-request/', 'POST', { email });
+            return {
+                data: undefined,
+                message: 'Password reset requested successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -186,11 +235,18 @@ export const userApi = {
      * @param newPassword - New password
      * @returns Promise that resolves when the password is reset successfully
      */
-    resetPassword: async (token: string, newPassword: string): Promise<void> => {
+    resetPassword: async (token: string, newPassword: string): Promise<ApiResponse<void>> => {
         try {
             await apiRequest('/auth/password-reset/', 'POST', { token, new_password: newPassword });
+            return {
+                data: undefined,
+                message: 'Password reset successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 
@@ -199,11 +255,18 @@ export const userApi = {
      * @param token - Email verification token
      * @returns Promise that resolves when the email is verified successfully
      */
-    verifyEmail: async (token: string): Promise<void> => {
+    verifyEmail: async (token: string): Promise<ApiResponse<void>> => {
         try {
             await apiRequest('/auth/verify-email/', 'POST', { token });
+            return {
+                data: undefined,
+                message: 'Email verified successfully',
+            };
         } catch (error) {
-            throw new Error(handleApiError(error));
+            return {
+                data: undefined,
+                error: handleApiError(error),
+            };
         }
     },
 };

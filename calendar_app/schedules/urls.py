@@ -93,4 +93,5 @@ urlpatterns = [
     # Invitation paths
     path('group-invitation/<int:group_id>/<int:user_id>/', GroupInvitationView.as_view(), name='group-invitation'),
     path('event-invitation/<int:event_id>/<int:user_id>/', EventInvitationView.as_view(), name='event-invitation'),
+    path('users/<int:user_id>/update_profile/', update_user_profile, name='update_user_profile'),
 ]

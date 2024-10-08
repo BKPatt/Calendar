@@ -25,6 +25,7 @@ export interface UserProfile extends User {
     phoneNumber?: string;
     notificationPreferences: NotificationPreferences;
     lastLoginPlatform?: 'web' | 'ios' | 'android';
+    profileComplete?: boolean;
 }
 
 export interface RegistrationData {

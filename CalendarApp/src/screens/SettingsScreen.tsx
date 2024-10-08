@@ -7,7 +7,6 @@ import {
     ListItem,
     ListItemText,
     ListItemIcon,
-    ListItemSecondaryAction,
     Switch,
     Select,
     MenuItem,
@@ -39,9 +38,9 @@ import { UserProfile } from '../types/user';
 
 const SettingsScreen: React.FC = () => {
     const { updateUserProfile, getUserProfile, changePassword, deleteAccount } = userApi;
-
     const { user, logout } = useAuth();
     const { theme, setTheme } = useApp();
+
     const [notificationPreferences, setNotificationPreferences] = useState({
         email: false,
         push: false,
@@ -140,35 +139,38 @@ const SettingsScreen: React.FC = () => {
                         </ListItemIcon>
                         <ListItemText primary="Notifications" />
                     </ListItem>
-                    <ListItem>
-                        <ListItemText secondary="Email Notifications" />
-                        <ListItemSecondaryAction>
+                    <ListItem
+                        secondaryAction={
                             <Switch
                                 edge="end"
                                 onChange={() => handleNotificationChange('email')}
                                 checked={notificationPreferences.email}
                             />
-                        </ListItemSecondaryAction>
+                        }
+                    >
+                        <ListItemText secondary="Email Notifications" />
                     </ListItem>
-                    <ListItem>
-                        <ListItemText secondary="Push Notifications" />
-                        <ListItemSecondaryAction>
+                    <ListItem
+                        secondaryAction={
                             <Switch
                                 edge="end"
                                 onChange={() => handleNotificationChange('push')}
                                 checked={notificationPreferences.push}
                             />
-                        </ListItemSecondaryAction>
+                        }
+                    >
+                        <ListItemText secondary="Push Notifications" />
                     </ListItem>
-                    <ListItem>
-                        <ListItemText secondary="In-App Notifications" />
-                        <ListItemSecondaryAction>
+                    <ListItem
+                        secondaryAction={
                             <Switch
                                 edge="end"
                                 onChange={() => handleNotificationChange('inApp')}
                                 checked={notificationPreferences.inApp}
                             />
-                        </ListItemSecondaryAction>
+                        }
+                    >
+                        <ListItemText secondary="In-App Notifications" />
                     </ListItem>
 
                     <Divider />
@@ -177,12 +179,14 @@ const SettingsScreen: React.FC = () => {
                             <PaletteIcon />
                         </ListItemIcon>
                         <ListItemText primary="Theme" />
-                        <ListItemSecondaryAction>
-                            <Select value={theme} onChange={handleThemeChange}>
-                                <MenuItem value="light">Light</MenuItem>
-                                <MenuItem value="dark">Dark</MenuItem>
-                            </Select>
-                        </ListItemSecondaryAction>
+                        <ListItem
+                            secondaryAction={
+                                <Select value={theme} onChange={handleThemeChange}>
+                                    <MenuItem value="light">Light</MenuItem>
+                                    <MenuItem value="dark">Dark</MenuItem>
+                                </Select>
+                            }
+                        />
                     </ListItem>
                     <Divider />
 
