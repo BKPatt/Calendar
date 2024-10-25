@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { TextField, Box, Grid, Popover, IconButton, InputAdornment, Typography, Button } from '@mui/material';
+import { TextField, Box, Grid, Popover, IconButton, InputAdornment, Button } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format, isValid, parse, setHours, setMinutes, getHours, getMinutes } from 'date-fns';
@@ -118,7 +118,7 @@ const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
         <LocalizationProvider dateAdapter={AdapterDateFns}>
             <Box ref={inputRef}>
                 <Grid container spacing={2}>
-                    <Grid item xs={8}>
+                    <Grid item xs={7}>
                         <TextField
                             label={label}
                             value={dateInputValue}
@@ -139,7 +139,7 @@ const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
                             }}
                         />
                     </Grid>
-                    <Grid item xs={4}>
+                    <Grid item xs={5}>
                         <TextField
                             label="Time"
                             type="time"
@@ -151,7 +151,7 @@ const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
                                 shrink: true,
                             }}
                             inputProps={{
-                                step: 300,
+                                step: 300, // 5 minutes
                             }}
                         />
                     </Grid>

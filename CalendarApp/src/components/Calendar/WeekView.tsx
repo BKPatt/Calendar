@@ -1,19 +1,19 @@
 import React from 'react';
 import { Box, Typography, Paper } from '@mui/material';
-import { eachDayOfInterval, startOfMonth, endOfMonth, format, isSameDay, isWithinInterval } from 'date-fns';
+import { eachDayOfInterval, startOfWeek, endOfWeek, format, isWithinInterval, isSameDay } from 'date-fns';
 import { Events } from '../../types/event';
 
-interface MonthViewProps {
+interface WeekViewProps {
     currentDate: Date;
     events: Events[];
     maxHeight?: string;
     onSelect: (date: Date) => void;
 }
 
-const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, maxHeight = '600px', onSelect }) => {
+const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, maxHeight = '600px', onSelect }) => {
     const days = eachDayOfInterval({
-        start: startOfMonth(currentDate),
-        end: endOfMonth(currentDate),
+        start: startOfWeek(currentDate),
+        end: endOfWeek(currentDate),
     });
 
     const getEventsForDay = (day: Date) => {
@@ -27,7 +27,7 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, maxHeight = 
     return (
         <Box sx={{ height: maxHeight, overflowY: 'auto' }}>
             <Typography variant="h6" gutterBottom>
-                {format(currentDate, 'MMMM yyyy')}
+                Week of {format(days[0], 'MMMM d')} - {format(days[6], 'MMMM d, yyyy')}
             </Typography>
             {days.map((day, index) => (
                 <Box
@@ -98,4 +98,4 @@ const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, maxHeight = 
     );
 };
 
-export default MonthView;
+export default WeekView;

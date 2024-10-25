@@ -106,41 +106,7 @@ const CalendarScreen: React.FC = () => {
                                 </IconButton>
                             </Box>
                         </Box>
-                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                            <Box>
-                                <Tooltip title="Day view">
-                                    <IconButton
-                                        onClick={() => setViewMode('day')}
-                                        color={viewMode === 'day' ? 'primary' : 'default'}
-                                    >
-                                        <ViewDay />
-                                    </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Week view">
-                                    <IconButton
-                                        onClick={() => setViewMode('week')}
-                                        color={viewMode === 'week' ? 'primary' : 'default'}
-                                    >
-                                        <ViewWeek />
-                                    </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Month view">
-                                    <IconButton
-                                        onClick={() => setViewMode('month')}
-                                        color={viewMode === 'month' ? 'primary' : 'default'}
-                                    >
-                                        <CalendarViewMonth />
-                                    </IconButton>
-                                </Tooltip>
-                            </Box>
-                            <Button
-                                variant="contained"
-                                startIcon={<AddIcon />}
-                                onClick={handleCreateEvent}
-                            >
-                                Create Event
-                            </Button>
-                        </Box>
+
                         {isLoadingEvents ? (
                             <Box display="flex" justifyContent="center" alignItems="center" height="50vh">
                                 <CircularProgress />

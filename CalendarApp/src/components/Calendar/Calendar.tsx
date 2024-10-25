@@ -11,7 +11,6 @@ import {
     endOfWeek,
     startOfMonth,
     endOfMonth,
-    eachDayOfInterval,
     isSameMonth,
     isSameDay,
     format,
@@ -80,9 +79,12 @@ const Calendar: React.FC<CalendarProps> = ({
                     width: '100%',
                     display: 'flex',
                     flexDirection: 'column',
-                    p: '2%',
+                    justifyContent: 'space-between',
+                    p: '4px',
                     cursor: 'pointer',
+                    userSelect: 'none',
                     '&:hover': { backgroundColor: theme.palette.action.hover },
+                    '&:focus': { outline: 'none' },
                     border: '1px solid',
                     borderColor: theme.palette.divider,
                 }}
@@ -123,9 +125,7 @@ const Calendar: React.FC<CalendarProps> = ({
         const start_date = startOfWeek(monthStart);
         const end_date = endOfWeek(monthEnd);
 
-        const dateFormat = "EEEEE";
         const rows = [];
-
         let days = [];
         let day = start_date;
 
@@ -133,10 +133,11 @@ const Calendar: React.FC<CalendarProps> = ({
             for (let i = 0; i < 7; i++) {
                 const cloneDay = day;
                 days.push(
-                    <Grid item xs={1} key={day.toString()} sx={{ aspectRatio: '1 / 1' }}>
+                    <Grid item xs={1} key={day.toString()} sx={{ display: 'flex', justifyContent: 'center' }}>
                         <Box
                             sx={{
-                                height: '100%',
+                                width: '100%',
+                                aspectRatio: '1',
                                 opacity: !isSameMonth(day, monthStart) ? 0.5 : 1,
                             }}
                         >
@@ -147,7 +148,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 day = new Date(day.getTime() + 24 * 60 * 60 * 1000);
             }
             rows.push(
-                <Grid container key={day.toString()} columns={7} spacing={0.5}>
+                <Grid container key={day.toString()} columns={7} spacing={0.5} sx={{ mb: 0.5 }}>
                     {days}
                 </Grid>
             );
@@ -155,8 +156,8 @@ const Calendar: React.FC<CalendarProps> = ({
         }
 
         return (
-            <Box sx={{ width: '100%', aspectRatio: '1 / 1', display: 'flex', flexDirection: 'column' }}>
-                <Grid container columns={7} spacing={0.5}>
+            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Grid container columns={7} spacing={0.5} sx={{ mb: 0.5 }}>
                     {["S", "M", "T", "W", "T", "F", "S"].map((dayName) => (
                         <Grid item xs={1} key={dayName}>
                             <Typography variant="caption" align="center">
