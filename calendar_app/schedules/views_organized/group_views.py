@@ -6,6 +6,8 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework.views import APIView
+from datetime import datetime
+import zoneinfo
 
 from ..models import Group, CustomUser, Invitation, Availability, Event
 from ..serializers import GroupSerializer, InvitationSerializer, EventSerializer
@@ -17,6 +19,7 @@ class GroupPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 100
 
+
 class GroupViewSet(viewsets.ModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
@@ -27,7 +30,7 @@ class GroupViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user_id = self.request.query_params.get('user_id', None)
-        
+
         if user_id:
             try:
                 user_id = int(user_id)
@@ -38,7 +41,7 @@ class GroupViewSet(viewsets.ModelViewSet):
             user = self.request.user
 
         return Group.objects.filter(Q(members=user) | Q(is_public=True))
-    
+
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
@@ -89,16 +92,40 @@ class GroupViewSet(viewsets.ModelViewSet):
         GroupInvitationManager.process_invitation_response(invitation, response)
         return Response({'status': 'Invitation response processed'})
 
+
 class GroupScheduleView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_iso_date(self, date_str):
+        if not date_str:
+            return None
+        try:
+            # Expecting an ISO 8601 date string (YYYY-MM-DD)
+            return datetime.fromisoformat(date_str).date()
+        except ValueError:
+            return None
 
     def get(self, request, group_id):
         group = get_object_or_404(Group, id=group_id)
         if request.user not in group.members.all():
             return Response({"error": "Not a member of this group"}, status=status.HTTP_403_FORBIDDEN)
 
-        start_date = request.query_params.get('start_date', timezone.now().date())
-        end_date = request.query_params.get('end_date', start_date + timezone.timedelta(days=30))
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+
+        if start_date_str:
+            start_date = self.get_iso_date(start_date_str)
+            if not start_date:
+                return Response({"error": "Invalid start_date format, must be YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            start_date = timezone.now().date()
+
+        if end_date_str:
+            end_date = self.get_iso_date(end_date_str)
+            if not end_date:
+                return Response({"error": "Invalid end_date format, must be YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            end_date = start_date + timezone.timedelta(days=30)
 
         events = Event.objects.filter(
             group=group,
@@ -106,38 +133,65 @@ class GroupScheduleView(APIView):
             end_time__date__lte=end_date
         ).order_by('start_time')
 
+        # Ensure events have aware datetimes
+        for event in events:
+            if timezone.is_naive(event.start_time):
+                tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                event.start_time = timezone.make_aware(event.start_time, tz)
+            if timezone.is_naive(event.end_time):
+                tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                event.end_time = timezone.make_aware(event.end_time, tz)
+
         serializer = EventSerializer(events, many=True)
         return Response(serializer.data)
-
-    def find_common_availability(self, group, start_date, end_date):
-        availabilities = Availability.objects.filter(
-            user__in=group.members.all(),
-            start_time__gte=start_date,
-            end_time__lte=end_date
-        )
-        common_free_time = find_common_free_time(
-            {member: availabilities.filter(user=member) for member in group.members.all()},
-            start_date, end_date
-        )
-        return common_free_time
 
 
 class GroupAvailabilityView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_iso_date(self, date_str):
+        if not date_str:
+            return None
+        try:
+            return datetime.fromisoformat(date_str).date()
+        except ValueError:
+            return None
 
     def get(self, request, group_id):
         group = get_object_or_404(Group, id=group_id)
         if request.user not in group.members.all():
             return Response({"error": "Not a member of this group"}, status=status.HTTP_403_FORBIDDEN)
 
-        start_date = request.query_params.get('start_date', timezone.now().date())
-        end_date = request.query_params.get('end_date', start_date + timezone.timedelta(days=30))
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
 
+        if start_date_str:
+            start_date = self.get_iso_date(start_date_str)
+            if not start_date:
+                return Response({"error": "Invalid start_date format, must be YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            start_date = timezone.now().date()
+
+        if end_date_str:
+            end_date = self.get_iso_date(end_date_str)
+            if not end_date:
+                return Response({"error": "Invalid end_date format, must be YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            end_date = start_date + timezone.timedelta(days=30)
+
+        # For availability queries, we filter by date range as well
         availabilities = Availability.objects.filter(
             user__in=group.members.all(),
-            start_time__gte=start_date,
-            end_time__lte=end_date
+            start_time__date__gte=start_date,
+            end_time__date__lte=end_date
         )
+
+        # Ensure availabilities have aware datetimes
+        for availability in availabilities:
+            if timezone.is_naive(availability.start_time):
+                availability.start_time = timezone.make_aware(availability.start_time, timezone.utc)
+            if timezone.is_naive(availability.end_time):
+                availability.end_time = timezone.make_aware(availability.end_time, timezone.utc)
 
         detailed_availability = [
             {

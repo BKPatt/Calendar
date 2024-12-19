@@ -1,5 +1,8 @@
+import logging
 from rest_framework import permissions
 from .models import Group, Event
+
+logger = logging.getLogger(__name__)
 
 class IsEventOwnerOrShared(permissions.BasePermission):
     """
@@ -8,7 +11,9 @@ class IsEventOwnerOrShared(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         if isinstance(obj, Event):
-            return obj.created_by == request.user or request.user in obj.shared_with.all()
+            if obj.created_by == request.user or request.user in obj.shared_with.all():
+                return True
+            logger.warning(f"User {request.user.username} is neither owner nor shared_with for event {obj.id}.")
         return False
 
 
@@ -19,9 +24,15 @@ class IsGroupMember(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         if isinstance(obj, Group):
-            return request.user in obj.members.all()
-        elif hasattr(obj, 'group'):
-            return obj.group and request.user in obj.group.members.all()
+            is_member = request.user in obj.members.all()
+            if not is_member:
+                logger.warning(f"User {request.user.username} is not a member of group {obj.id}.")
+            return is_member
+        elif hasattr(obj, 'group') and obj.group:
+            is_member = request.user in obj.group.members.all()
+            if not is_member:
+                logger.warning(f"User {request.user.username} is not a member of group {obj.group.id}.")
+            return is_member
         return False
 
 
@@ -32,7 +43,9 @@ class CanShareEvent(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         if isinstance(obj, Event):
-            return obj.created_by == request.user
+            if obj.created_by == request.user:
+                return True
+            logger.warning(f"User {request.user.username} attempted to share event {obj.id} without ownership.")
         return False
 
 
@@ -43,7 +56,9 @@ class CanEditGroup(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         if isinstance(obj, Group):
-            return obj.admin == request.user
+            if obj.admin == request.user:
+                return True
+            logger.warning(f"User {request.user.username} attempted to edit group {obj.id} without admin rights.")
         return False
 
 
@@ -56,7 +71,9 @@ class CanViewGroupEvents(permissions.BasePermission):
         group_id = view.kwargs.get('group_id')
         if group_id:
             group = Group.objects.filter(id=group_id).first()
-            return group and request.user in group.members.all()
+            if group and request.user in group.members.all():
+                return True
+            logger.warning(f"User {request.user.username} attempted to view events of group {group_id} without membership.")
         return False
 
 
@@ -68,5 +85,7 @@ class IsAuthenticatedOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return True
-        
-        return request.user and request.user.is_authenticated
+        if request.user and request.user.is_authenticated:
+            return True
+        logger.warning("Unauthenticated user attempted a non-read-only request.")
+        return False

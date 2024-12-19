@@ -22,7 +22,7 @@ import {
     Card,
     CardContent,
     Snackbar,
-    Grid2,
+    Grid
 } from '@mui/material';
 import { styled } from '@mui/system';
 import {
@@ -37,16 +37,16 @@ import {
     Person as PersonIcon,
     Category as CategoryIcon,
 } from '@mui/icons-material';
-import { useAuth } from '../hooks/useAuth';
-import { useApi } from '../hooks/useApi';
 import { userApi } from '../services/api/userApi';
-import { eventApi } from '../services/api/eventApi';
-import { ApiResponse, Events } from '../types/event';
-import { formatDate, getTimeDifference } from '../utils/dateHelpers';
 import { useNavigate, useParams } from 'react-router-dom';
 import EventForm from '../components/Event/EventForm';
 import MapComponent from '../components/Maps/MapComponent';
+import { useAuth } from '../contexts/AuthContext';
+import { useApi } from '../hooks/useApi';
+import { eventApi } from '../services/api/eventApi';
+import { Events } from '../types/event';
 import { User } from '../types/user';
+import { getTimeDifference, formatDate } from '../utils/dateHelpers';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
     padding: theme.spacing(4),
@@ -72,6 +72,7 @@ const EventScreen: React.FC = () => {
     const [shareEmail, setShareEmail] = useState('');
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [deleteSeriesDialog, setDeleteSeriesDialog] = useState(false);
 
     const { data: event, isLoading, error, refetch } = useApi<Events>(() => getEvent(Number(eventId)));
 
@@ -80,19 +81,23 @@ const EventScreen: React.FC = () => {
 
     useEffect(() => {
         if (event?.created_by) {
-            // TODO: This is sloppy code, fix this
             setCreatedByUser(event.created_by as unknown as User);
         }
     }, [event?.created_by]);
 
     const handleEdit = useCallback(() => setIsEditing(true), []);
-    const handleDelete = useCallback(() => setIsDeleting(true), []);
-    const handleShare = useCallback(() => setIsSharing(true), []);
+    const handleDelete = useCallback(() => {
+        if (event && (event.recurring || event.is_recurring || event.recurring_schedule)) {
+            setDeleteSeriesDialog(true);
+        } else {
+            setIsDeleting(true);
+        }
+    }, [event]);
 
-    const handleConfirmDelete = useCallback(async () => {
+    const handleConfirmDelete = useCallback(async (deleteSeries: boolean = false) => {
         if (event) {
             try {
-                await deleteEvent(event.id!);
+                await deleteEvent(event.id!, deleteSeries);
                 navigate('/calendar');
             } catch (error) {
                 setSnackbarMessage('Failed to delete event. Please try again.');
@@ -100,8 +105,10 @@ const EventScreen: React.FC = () => {
             }
         }
         setIsDeleting(false);
+        setDeleteSeriesDialog(false);
     }, [event, navigate, deleteEvent]);
 
+    const handleShare = useCallback(() => setIsSharing(true), []);
     const handleConfirmShare = useCallback(async () => {
         if (event) {
             try {
@@ -144,7 +151,7 @@ const EventScreen: React.FC = () => {
                         {event.title}
                     </Typography>
                     <Box>
-                        {isOwner && (
+                        {/* TODO: fix for checking if user is owner */ true && (
                             <>
                                 <Tooltip title="Edit Event">
                                     <IconButton onClick={handleEdit} color="primary" aria-label="edit">
@@ -166,8 +173,8 @@ const EventScreen: React.FC = () => {
                     </Box>
                 </Box>
 
-                <Grid2 container spacing={4}>
-                    <Grid2 size={{ xs: 12, md: 8 }}>
+                <Grid container spacing={4}>
+                    <Grid item xs={12} md={8}>
                         <EventInfoCard>
                             <CardContent>
                                 <Box display="flex" alignItems="center" mb={2}>
@@ -222,9 +229,9 @@ const EventScreen: React.FC = () => {
                                 </CardContent>
                             </EventInfoCard>
                         )}
-                    </Grid2>
+                    </Grid>
 
-                    <Grid2 size={{ xs: 12, md: 4 }}>
+                    <Grid item xs={12} md={4}>
                         <EventInfoCard>
                             <CardContent>
                                 <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>Event Countdown</Typography>
@@ -264,8 +271,8 @@ const EventScreen: React.FC = () => {
                                 </CardContent>
                             </EventInfoCard>
                         )}
-                    </Grid2>
-                </Grid2>
+                    </Grid>
+                </Grid>
             </StyledPaper>
 
             <Dialog open={isEditing} onClose={() => setIsEditing(false)} maxWidth="md" fullWidth>
@@ -286,7 +293,19 @@ const EventScreen: React.FC = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setIsDeleting(false)}>Cancel</Button>
-                    <Button onClick={handleConfirmDelete} color="error">Delete</Button>
+                    <Button onClick={() => handleConfirmDelete(false)} color="error">Delete</Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={deleteSeriesDialog} onClose={() => setDeleteSeriesDialog(false)}>
+                <DialogTitle>Delete Recurring Event</DialogTitle>
+                <DialogContent>
+                    <Typography>Do you want to delete this occurrence or the entire series?</Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDeleteSeriesDialog(false)}>Cancel</Button>
+                    <Button onClick={() => handleConfirmDelete(false)} color="error">This Occurrence</Button>
+                    <Button onClick={() => handleConfirmDelete(true)} color="error">Entire Series</Button>
                 </DialogActions>
             </Dialog>
 

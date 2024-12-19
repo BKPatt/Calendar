@@ -4,6 +4,31 @@ import { User } from "./user";
 export type EventType = 'meeting' | 'appointment' | 'social' | 'work' | 'other';
 export const EVENT_TYPES: EventType[] = ['meeting', 'appointment', 'social', 'work', 'other'];
 
+export interface RecurrenceRule {
+    frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+    interval: number;
+    end_date?: string;
+    occurrences?: number;
+    days_of_week?: string[];
+    day_of_month?: number;
+    month_of_year?: number;
+    start_date?: string;
+}
+
+export interface Attachment {
+    id: number;
+    file: string;
+    uploadedBy: User;
+    uploadedAt: string;
+}
+
+export interface PaginatedEvents {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: Events[];
+}
+
 export interface Events {
     id?: number;
     title: string;
@@ -12,7 +37,8 @@ export interface Events {
     location?: string;
     start_time: string;
     end_time: string;
-    start_date: string;
+    start_date?: string;
+    end_date?: string;
     created_by?: number;
     group?: number;
     recurrence_rule?: RecurrenceRule;
@@ -21,22 +47,19 @@ export interface Events {
     is_all_day: boolean;
     color: string;
     attachments?: Attachment[];
-    createdAt?: string;
-    updatedAt?: string;
+    created_at?: string;
+    updated_at?: string;
     reminders: Array<{
         reminder_time: string;
         reminder_type: 'email' | 'push' | 'in_app';
     }>;
     recurring: boolean;
-    recurrenceend_date?: string;
-}
-
-export interface RecurrenceRule {
-    frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
-    interval: number;
-    end_date?: string;
-    occurrences?: number;
-    days_of_week?: string[];
+    recurrence_end_date?: string;
+    event_timezone?: string;
+    is_archived?: boolean;
+    is_recurring?: boolean;
+    category?: number;
+    recurring_schedule?: number;
 }
 
 export interface Availability {
@@ -85,7 +108,7 @@ export interface Notifications {
     recipient: User;
     sender?: User;
     notificationType: NotificationType;
-    event?: Event;
+    event?: Events;
     group?: Group;
     message: string;
     isRead: boolean;
@@ -97,13 +120,6 @@ export interface Tag {
     id: number;
     name: string;
     color: string;
-}
-
-export interface Attachment {
-    id: number;
-    file: string;
-    uploadedBy: User;
-    uploadedAt: string;
 }
 
 export interface UserDeviceToken {
@@ -119,6 +135,7 @@ export interface ApiResponse<T> {
     data: T;
     message?: string;
     error?: string[];
+    count?: number;
 }
 
 export interface PaginatedResponse<T> extends ApiResponse<T> {

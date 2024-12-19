@@ -1,18 +1,18 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 import logging
 from django.forms import ValidationError
 from rest_framework import viewsets, permissions, status, filters
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils import timezone
 from django.http import HttpResponse
 import csv
-from dateutil.parser import parse
 from dateutil.rrule import rrule, WEEKLY, DAILY, MONTHLY, YEARLY, MO, TU, WE, TH, FR, SA, SU
-from django.utils.timezone import is_aware, make_aware
+import zoneinfo
 
 from ..models import Event, EventReminder, RecurringSchedule, CustomUser
 from ..serializers import EventSerializer, EventExportSerializer, RecurringScheduleSerializer
@@ -22,6 +22,10 @@ from ..permissions import IsEventOwnerOrShared
 
 logger = logging.getLogger(__name__)
 
+class CustomPageNumberPagination(PageNumberPagination):
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
@@ -29,50 +33,56 @@ class EventViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['title', 'description']
     ordering_fields = ['start_time', 'end_time', 'created_at']
+    pagination_class = CustomPageNumberPagination
 
     def create(self, request, *args, **kwargs):
         try:
             data = request.data.copy()
             data['created_by'] = request.user.id
-
-            # Convert field names if necessary
-            if 'start_time' in data:
-                data['start_time'] = data.pop('start_time')
-            if 'end_time' in data:
-                data['end_time'] = data.pop('end_time')
-            if 'is_all_day' in data:
-                data['is_all_day'] = data.pop('is_all_day')
-
+            start_str = data.get('start_time')
+            end_str = data.get('end_time')
+            event_tz = data.get('event_timezone', 'UTC')
+            tz = zoneinfo.ZoneInfo(event_tz)
+            if start_str:
+                dt = datetime.fromisoformat(start_str)
+                if timezone.is_naive(dt):
+                    dt = timezone.make_aware(dt, tz)
+                data['start_time'] = dt.isoformat()
+            if end_str:
+                dt = datetime.fromisoformat(end_str)
+                if timezone.is_naive(dt):
+                    dt = timezone.make_aware(dt, tz)
+                data['end_time'] = dt.isoformat()
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             event = serializer.save(created_by=request.user)
-
             return Response({"data": serializer.data}, status=status.HTTP_201_CREATED)
-
         except Exception as e:
-            return Response(
-                {'error': f'Event creation failed due to an error: {str(e)}'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            logger.error(f"Error creating event: {str(e)}")
+            return Response({'error': f'Event creation failed due to an error: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         data = request.data.copy()
-
-        # Convert field names if necessary
-        if 'start_time' in data:
-            data['start_time'] = data.pop('start_time')
-        if 'end_time' in data:
-            data['end_time'] = data.pop('end_time')
-        if 'is_all_day' in data:
-            data['is_all_day'] = data.pop('is_all_day')
-
+        start_str = data.get('start_time')
+        end_str = data.get('end_time')
+        event_tz = data.get('event_timezone', instance.event_timezone if instance.event_timezone else 'UTC')
+        tz = zoneinfo.ZoneInfo(event_tz)
+        if start_str:
+            dt = datetime.fromisoformat(start_str)
+            if timezone.is_naive(dt):
+                dt = timezone.make_aware(dt, tz)
+            data['start_time'] = dt.isoformat()
+        if end_str:
+            dt = datetime.fromisoformat(end_str)
+            if timezone.is_naive(dt):
+                dt = timezone.make_aware(dt, tz)
+            data['end_time'] = dt.isoformat()
         serializer = self.get_serializer(instance, data=data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
-
-        return Response(serializer.data)
+        return Response({"data": serializer.data})
 
     def get_permissions(self):
         if self.action == 'list':
@@ -84,64 +94,77 @@ class EventViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def by_date_range(self, request):
         user_id = request.query_params.get('user_id')
-        start_date = request.query_params.get('start_date')
-        end_date = request.query_params.get('end_date')
-
-        if not user_id or not start_date or not end_date:
-            return Response(
-                {'error': 'User ID, start_date, and end_date are required.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+        if not user_id or not start_date_str or not end_date_str:
+            return Response({'error': 'User ID, start_date, and end_date are required.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            start_date = timezone.make_aware(datetime.fromisoformat(start_date))
-            end_date = timezone.make_aware(datetime.fromisoformat(end_date))
+            start_dt = datetime.fromisoformat(start_date_str)
+            if timezone.is_naive(start_dt):
+                start_dt = timezone.make_aware(start_dt, dt_timezone.utc)
+            end_dt = datetime.fromisoformat(end_date_str)
+            if timezone.is_naive(end_dt):
+                end_dt = timezone.make_aware(end_dt, dt_timezone.utc)
         except ValueError:
             return Response({'error': 'Invalid date format.'}, status=status.HTTP_400_BAD_REQUEST)
-
         events = Event.objects.filter(
             Q(created_by__id=user_id) | Q(shared_with__id=user_id),
-            start_time__lte=end_date,
-            end_time__gte=start_date
+            start_time__lte=end_dt,
+            end_time__gte=start_dt
         ).order_by('start_time')
-
-        serializer = EventSerializer(events, many=True)
+        for event in events:
+            if timezone.is_naive(event.start_time):
+                tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                event.start_time = timezone.make_aware(event.start_time, tz)
+            if timezone.is_naive(event.end_time):
+                tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                event.end_time = timezone.make_aware(event.end_time, tz)
+        serializer = self.get_serializer(events, many=True)
         return Response({"data": serializer.data})
 
     def get_queryset(self):
         user = self.request.user
-        start_date = self.request.query_params.get('start_date')
-        end_date = self.request.query_params.get('end_date')
-
+        start_date_str = self.request.query_params.get('start_date')
+        end_date_str = self.request.query_params.get('end_date')
         queryset = Event.objects.filter(
-            Q(created_by=user) | 
-            Q(shared_with=user) | 
+            Q(created_by=user) |
+            Q(shared_with=user) |
             Q(group__members=user)
         ).distinct()
 
-        if start_date and end_date:
+        if start_date_str and end_date_str:
             try:
-                start_date = timezone.make_aware(datetime.fromisoformat(start_date))
-                end_date = timezone.make_aware(datetime.fromisoformat(end_date))
+                start_dt = datetime.fromisoformat(start_date_str)
+                if timezone.is_naive(start_dt):
+                    start_dt = timezone.make_aware(start_dt, dt_timezone.utc)
+
+                end_dt = datetime.fromisoformat(end_date_str)
+                if timezone.is_naive(end_dt):
+                    end_dt = timezone.make_aware(end_dt, dt_timezone.utc)
+
+                end_dt = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+
             except ValueError:
-                raise ValidationError("Invalid date format. Use ISO format (YYYY-MM-DDTHH:MM:SS).")
+                raise ValidationError("Invalid date format. Use ISO format (YYYY-MM-DD).")
 
             non_recurring_events = queryset.filter(
                 recurring=False,
-                start_time__lt=end_date,
-                end_time__gt=start_date
+                start_time__lt=end_dt,
+                end_time__gt=start_dt
             )
 
             recurring_events = queryset.filter(recurring=True)
             recurring_event_instances = []
-
             for event in recurring_events:
                 schedule = event.recurring_schedule
                 if schedule:
                     rule = self.get_rrule(schedule, event.start_time)
                     event_duration = event.end_time - event.start_time
 
-                    for occurrence in rule.between(start_date, end_date):
+                    for occurrence in rule.between(start_dt, end_dt, inc=True):
+                        tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                        if timezone.is_naive(occurrence):
+                            occurrence = timezone.make_aware(occurrence, tz)
                         recurring_event_instances.append(Event(
                             id=event.id,
                             title=event.title,
@@ -156,7 +179,8 @@ class EventViewSet(viewsets.ModelViewSet):
                             recurrence_end_date=event.recurrence_end_date,
                             color=event.color,
                             event_type=event.event_type,
-                            is_all_day=event.is_all_day
+                            is_all_day=event.is_all_day,
+                            event_timezone=event.event_timezone
                         ))
 
             all_events = list(non_recurring_events) + recurring_event_instances
@@ -164,14 +188,30 @@ class EventViewSet(viewsets.ModelViewSet):
             return all_events
 
         return queryset
-    
+
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            paginated_response = self.get_paginated_response(serializer.data)
+            # Wrap paginated results under "data"
+            paginated_data = paginated_response.data
+            if 'results' in paginated_data:
+                paginated_data['data'] = paginated_data.pop('results')
+            return Response(paginated_data)
+
         serializer = self.get_serializer(queryset, many=True)
         return Response({"data": serializer.data})
-    
+
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
+        if timezone.is_naive(instance.start_time):
+            tz = zoneinfo.ZoneInfo(instance.event_timezone if instance.event_timezone else 'UTC')
+            instance.start_time = timezone.make_aware(instance.start_time, tz)
+        if timezone.is_naive(instance.end_time):
+            tz = zoneinfo.ZoneInfo(instance.event_timezone if instance.event_timezone else 'UTC')
+            instance.end_time = timezone.make_aware(instance.end_time, tz)
         serializer = self.get_serializer(instance)
         return Response({"data": serializer.data})
 
@@ -182,18 +222,15 @@ class EventViewSet(viewsets.ModelViewSet):
             'MONTHLY': MONTHLY,
             'YEARLY': YEARLY
         }
-
         rule_params = {
             'freq': frequency_map[schedule.frequency],
             'dtstart': dtstart,
             'interval': schedule.interval,
             'until': schedule.end_date,
         }
-
         byweekday = self.get_byweekday(schedule.days_of_week)
         if byweekday:
             rule_params['byweekday'] = byweekday
-
         return rrule(**rule_params)
 
     def get_byweekday(self, days_of_week):
@@ -217,29 +254,26 @@ class EventViewSet(viewsets.ModelViewSet):
             user_id = request.query_params.get('user_id')
             if not user_id:
                 return Response({'error': 'User ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
             user = get_object_or_404(CustomUser, id=user_id)
             now = timezone.now()
             end_date = now + timedelta(days=7)
-
-            # Get all events (recurring and non-recurring) for the user
             all_events = Event.objects.filter(
                 Q(created_by=user) | Q(shared_with=user),
-                Q(start_time__gte=now, start_time__lte=end_date) |  # Regular events
-                Q(recurring=True, recurrence_end_date__gte=now) |  # Recurring events that haven't ended
-                Q(recurring=True, recurrence_end_date__isnull=True)  # Recurring events with no end date
+                Q(start_time__gte=now, start_time__lte=end_date) |
+                Q(recurring=True, recurrence_end_date__gte=now) |
+                Q(recurring=True, recurrence_end_date__isnull=True)
             )
-
             upcoming_events = []
-
             for event in all_events:
                 if event.recurring:
                     schedule = event.recurring_schedule
                     if schedule:
                         rule = self.get_rrule(schedule, event.start_time)
                         event_duration = event.end_time - event.start_time
-
                         for occurrence in rule.between(now, end_date):
+                            tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                            if timezone.is_naive(occurrence):
+                                occurrence = timezone.make_aware(occurrence, tz)
                             upcoming_events.append(Event(
                                 id=event.id,
                                 title=event.title,
@@ -254,23 +288,34 @@ class EventViewSet(viewsets.ModelViewSet):
                                 recurrence_end_date=event.recurrence_end_date,
                                 color=event.color,
                                 event_type=event.event_type,
-                                is_all_day=event.is_all_day
+                                is_all_day=event.is_all_day,
+                                event_timezone=event.event_timezone
                             ))
                 else:
+                    if timezone.is_naive(event.start_time):
+                        tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                        event.start_time = timezone.make_aware(event.start_time, tz)
+                    if timezone.is_naive(event.end_time):
+                        tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                        event.end_time = timezone.make_aware(event.end_time, tz)
                     upcoming_events.append(event)
 
-            # Sort events by start time
             upcoming_events.sort(key=lambda x: x.start_time)
+
+            page = self.paginate_queryset(upcoming_events)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                paginated_response = self.get_paginated_response(serializer.data)
+                paginated_data = paginated_response.data
+                if 'results' in paginated_data:
+                    paginated_data['data'] = paginated_data.pop('results')
+                return Response(paginated_data)
 
             serializer = self.get_serializer(upcoming_events, many=True)
             return Response({"data": serializer.data})
-
         except Exception as e:
             logger.error(f"Error fetching upcoming events: {str(e)}")
-            return Response(
-                {'error': 'Failed to fetch upcoming events.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'Failed to fetch upcoming events.'}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'])
     def export(self, request):
@@ -279,9 +324,7 @@ class EventViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             event_ids = serializer.validated_data['event_ids']
             export_format = serializer.validated_data['export_format']
-
             events = Event.objects.filter(id__in=event_ids, created_by=request.user)
-
             if export_format == 'ICAL':
                 ical_data = generate_ical(events)
                 response = HttpResponse(ical_data, content_type='text/calendar')
@@ -293,14 +336,33 @@ class EventViewSet(viewsets.ModelViewSet):
                 writer = csv.writer(response)
                 writer.writerow(['Title', 'Description', 'Start Time', 'End Time'])
                 for event in events:
+                    if timezone.is_naive(event.start_time):
+                        tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                        event.start_time = timezone.make_aware(event.start_time, tz)
+                    if timezone.is_naive(event.end_time):
+                        tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                        event.end_time = timezone.make_aware(event.end_time, tz)
                     writer.writerow([event.title, event.description, event.start_time, event.end_time])
                 return response
+            else:
+                return Response({'error': 'Unsupported export format'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error(f"Error exporting events: {str(e)}")
-            return Response(
-                {'error': 'Event export failed.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'Event export failed.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        delete_series = request.query_params.get('delete_series', 'false').lower() == 'true'
+        if (instance.recurring or instance.is_recurring or instance.recurring_schedule) and delete_series:
+            recurring_schedule = instance.recurring_schedule
+            if recurring_schedule:
+                Event.objects.filter(recurring_schedule=recurring_schedule).delete()
+                recurring_schedule.delete()
+            else:
+                instance.delete()
+        else:
+            instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class RecurringScheduleViewSet(viewsets.ModelViewSet):
     queryset = RecurringSchedule.objects.all()
@@ -320,6 +382,14 @@ class RecurringScheduleViewSet(viewsets.ModelViewSet):
             recurring_schedule = self.get_object()
             end_date = request.data.get('end_date', recurring_schedule.end_date)
             events = recurring_schedule.generate_events(end_date=end_date)
+            # ensure times are aware
+            for event in events:
+                if timezone.is_naive(event.start_time):
+                    tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                    event.start_time = timezone.make_aware(event.start_time, tz)
+                if timezone.is_naive(event.end_time):
+                    tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                    event.end_time = timezone.make_aware(event.end_time, tz)
             serializer = EventSerializer(events, many=True)
             return Response(serializer.data)
         except Exception as e:
@@ -334,6 +404,24 @@ class EventCreateView(APIView):
         try:
             data = request.data.copy()
             data['created_by'] = request.user.id
+
+            # Ensure timezone awareness
+            start_str = data.get('start_time')
+            end_str = data.get('end_time')
+            event_tz = data.get('event_timezone', 'UTC')
+            tz = zoneinfo.ZoneInfo(event_tz)
+
+            if start_str:
+                dt = datetime.fromisoformat(start_str)
+                if timezone.is_naive(dt):
+                    dt = timezone.make_aware(dt, tz)
+                data['start_time'] = dt.isoformat()
+
+            if end_str:
+                dt = datetime.fromisoformat(end_str)
+                if timezone.is_naive(dt):
+                    dt = timezone.make_aware(dt, tz)
+                data['end_time'] = dt.isoformat()
 
             serializer = EventSerializer(data=data)
             if serializer.is_valid():
@@ -371,7 +459,8 @@ class EventReminderView(APIView):
             reminder_time = request.data.get('reminder_time')
             if not reminder_time:
                 return Response({'error': 'Reminder time is required'}, status=status.HTTP_400_BAD_REQUEST)
-            reminder_datetime = timezone.now() + timezone.timedelta(minutes=int(reminder_time))
+            reminder_minutes = int(reminder_time)
+            reminder_datetime = timezone.now() + timezone.timedelta(minutes=reminder_minutes)
             send_event_reminder.apply_async((event.id,), eta=reminder_datetime)
             return Response({'message': 'Reminder set successfully'}, status=status.HTTP_200_OK)
         except Exception as e:
@@ -388,6 +477,23 @@ class BulkEventCreateView(APIView):
             created_events = []
             for event_data in events_data:
                 event_data['created_by'] = request.user.id
+                event_tz = event_data.get('event_timezone', 'UTC')
+                tz = zoneinfo.ZoneInfo(event_tz)
+                start_str = event_data.get('start_time')
+                end_str = event_data.get('end_time')
+
+                if start_str:
+                    dt = datetime.fromisoformat(start_str)
+                    if timezone.is_naive(dt):
+                        dt = timezone.make_aware(dt, tz)
+                    event_data['start_time'] = dt.isoformat()
+
+                if end_str:
+                    dt = datetime.fromisoformat(end_str)
+                    if timezone.is_naive(dt):
+                        dt = timezone.make_aware(dt, tz)
+                    event_data['end_time'] = dt.isoformat()
+
                 serializer = EventSerializer(data=event_data)
                 if serializer.is_valid():
                     event = serializer.save()
@@ -405,25 +511,40 @@ class ConflictCheckView(APIView):
 
     def post(self, request):
         try:
-            start_time = request.data.get('start_time')
-            end_time = request.data.get('end_time')
-            if not start_time or not end_time:
+            start_time_str = request.data.get('start_time')
+            end_time_str = request.data.get('end_time')
+            if not start_time_str or not end_time_str:
                 return Response({'error': 'Both start_time and end_time are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Ensure times are aware
+            start_dt = datetime.fromisoformat(start_time_str)
+            if timezone.is_naive(start_dt):
+                start_dt = timezone.make_aware(start_dt, timezone.utc)
+            end_dt = datetime.fromisoformat(end_time_str)
+            if timezone.is_naive(end_dt):
+                end_dt = timezone.make_aware(end_dt, timezone.utc)
+
             conflicts = Event.objects.filter(
                 Q(created_by=request.user) | Q(shared_with=request.user),
-                Q(start_time__lt=end_time, end_time__gt=start_time) |
-                Q(start_time__lte=start_time, end_time__gte=end_time)
+                Q(start_time__lt=end_dt, end_time__gt=start_dt) |
+                Q(start_time__lte=start_dt, end_time__gte=end_dt)
             )
+
             if conflicts.exists():
-                conflicting_events = [
-                    {
+                conflicting_events = []
+                for event in conflicts:
+                    if timezone.is_naive(event.start_time):
+                        tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                        event.start_time = timezone.make_aware(event.start_time, tz)
+                    if timezone.is_naive(event.end_time):
+                        tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                        event.end_time = timezone.make_aware(event.end_time, tz)
+                    conflicting_events.append({
                         'id': event.id,
                         'title': event.title,
                         'start_time': event.start_time,
                         'end_time': event.end_time
-                    }
-                    for event in conflicts
-                ]
+                    })
                 return Response({'has_conflicts': True, 'conflicting_events': conflicting_events})
             return Response({'has_conflicts': False})
         except Exception as e:

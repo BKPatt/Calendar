@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { TextField, Box, Grid, Popover, IconButton, InputAdornment, Button } from '@mui/material';
+import { Box, Popover, IconButton, InputAdornment, Button } from '@mui/material';
+import Grid2 from '@mui/material/Grid2';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format, isValid, parse, setHours, setMinutes, getHours, getMinutes } from 'date-fns';
 import EventIcon from '@mui/icons-material/Event';
 import Calendar from './Calendar';
+import { TextField } from '@mui/material';
 
 interface CustomDateTimePickerProps {
     label: string;
@@ -22,7 +24,7 @@ interface CustomDateTimePickerProps {
     onBlur?: () => void;
 }
 
-const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
+export default function CustomDateTimePicker({
     label,
     value,
     onChange,
@@ -36,7 +38,7 @@ const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
     timeFormat = 'HH:mm',
     clearable = true,
     onBlur,
-}) => {
+}: CustomDateTimePickerProps) {
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
     const [dateInputValue, setDateInputValue] = useState<string>('');
     const [timeInputValue, setTimeInputValue] = useState<string>('');
@@ -59,7 +61,7 @@ const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
         updateStateFromValue(value);
     }, [value, updateStateFromValue]);
 
-    const handleIconClick = (event: React.MouseEvent<HTMLElement>) => {
+    const handleIconClick = () => {
         if (!disabled) {
             setAnchorEl(inputRef.current);
         }
@@ -78,7 +80,6 @@ const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
     const handleTimeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const newTimeValue = event.target.value;
         setTimeInputValue(newTimeValue);
-
         if (selectedDate) {
             const [hours, minutes] = newTimeValue.split(':').map(Number);
             if (!isNaN(hours) && !isNaN(minutes)) {
@@ -96,7 +97,6 @@ const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
     const handleDateInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const newValue = event.target.value;
         setDateInputValue(newValue);
-
         const parsedDate = parse(newValue, dateFormat, new Date());
         if (isValid(parsedDate)) {
             const newDateTime = selectedDate
@@ -117,8 +117,8 @@ const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
     return (
         <LocalizationProvider dateAdapter={AdapterDateFns}>
             <Box ref={inputRef}>
-                <Grid container spacing={2}>
-                    <Grid item xs={7}>
+                <Grid2 container spacing={2} columns={12}>
+                    <Grid2 size={7}>
                         <TextField
                             label={label}
                             value={dateInputValue}
@@ -128,6 +128,7 @@ const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
                             helperText={helperText}
                             disabled={disabled}
                             fullWidth={fullWidth}
+                            variant="outlined"
                             InputProps={{
                                 endAdornment: (
                                     <InputAdornment position="end">
@@ -137,9 +138,12 @@ const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
                                     </InputAdornment>
                                 ),
                             }}
+                            slotProps={{
+                                inputLabel: { shrink: true }
+                            }}
                         />
-                    </Grid>
-                    <Grid item xs={5}>
+                    </Grid2>
+                    <Grid2 size={5}>
                         <TextField
                             label="Time"
                             type="time"
@@ -147,15 +151,14 @@ const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
                             onChange={handleTimeChange}
                             disabled={disabled}
                             fullWidth
-                            InputLabelProps={{
-                                shrink: true,
-                            }}
-                            inputProps={{
-                                step: 300, // 5 minutes
+                            variant="outlined"
+                            slotProps={{
+                                inputLabel: { shrink: true },
+                                input: { inputProps: { step: 300 } }
                             }}
                         />
-                    </Grid>
-                </Grid>
+                    </Grid2>
+                </Grid2>
             </Box>
             <Popover
                 open={Boolean(anchorEl)}
@@ -180,6 +183,7 @@ const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
                         goToToday={() => { }}
                         handleCreateEvent={() => { }}
                         viewMode="month"
+                        setViewMode={() => { }}
                     />
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
                         {clearable && (
@@ -205,6 +209,4 @@ const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
             </Popover>
         </LocalizationProvider>
     );
-};
-
-export default CustomDateTimePicker;
+}

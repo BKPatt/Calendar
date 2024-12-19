@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
-import { CssBaseline } from '@mui/material';
+import { CssBaseline, Box } from '@mui/material';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import theme from './theme';
 
@@ -41,11 +41,10 @@ const App: React.FC = () => {
       <AuthProvider>
         <AppProvider>
           <Router>
-            <div style={{ display: 'flex', position: 'relative' }}>
+            <Box sx={{ display: 'flex' }}>
               <AppHeader onMenuClick={toggleDrawer} />
               <NavTray isDrawerOpen={isDrawerOpen} toggleDrawer={toggleDrawer} />
-
-              <main style={{ flexGrow: 1, padding: '80px 24px 24px' }}>
+              <Box component="main" sx={{ flexGrow: 1, p: 3, mt: '64px' }}>
                 <Routes>
                   <Route path="/signin" element={<PublicRoute><SignIn /></PublicRoute>} />
                   <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
@@ -57,8 +56,8 @@ const App: React.FC = () => {
                   <Route path="/events/:eventId" element={<PrivateRoute><EventScreen /></PrivateRoute>} />
                   <Route path="/events" element={<PrivateRoute><UpcomingEventsScreen /></PrivateRoute>} />
                 </Routes>
-              </main>
-            </div>
+              </Box>
+            </Box>
           </Router>
         </AppProvider>
       </AuthProvider>

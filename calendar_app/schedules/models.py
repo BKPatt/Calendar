@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
+import zoneinfo
 from matplotlib.dates import rrule
 
 class CustomUser(AbstractUser):
@@ -45,9 +46,6 @@ class Group(models.Model):
     default_event_color = models.CharField(max_length=7, default="#007bff")
 
     def calculate_group_availability(self, start_date, end_date):
-        """
-        Calculate group members' availability for a given time range.
-        """
         group_availability = {}
         for member in self.members.all():
             availabilities = member.availabilities.filter(start_time__gte=start_date, end_time__lte=end_date)
@@ -102,14 +100,20 @@ class RecurringSchedule(models.Model):
         }
 
         while current_date <= end_date and len(events) < limit:
-            start_time = timezone.datetime.combine(current_date, self.start_time)
-            end_time = timezone.datetime.combine(current_date, self.end_time)
+            start_dt = timezone.make_aware(
+                timezone.datetime.combine(current_date, self.start_time),
+                timezone=zoneinfo.ZoneInfo(self.user.userprofile.timezone if self.user.userprofile else 'UTC')
+            )
+            end_dt = timezone.make_aware(
+                timezone.datetime.combine(current_date, self.end_time),
+                timezone=zoneinfo.ZoneInfo(self.user.userprofile.timezone if self.user.userprofile else 'UTC')
+            )
 
             event = Event(
                 title=self.title,
                 description=self.description,
-                start_time=start_time,
-                end_time=end_time,
+                start_time=start_dt,
+                end_time=end_dt,
                 location=self.location,
                 created_by=self.user,
                 recurring=True,
@@ -118,11 +122,10 @@ class RecurringSchedule(models.Model):
                     'interval': self.interval,
                 },
                 recurring_schedule=self,
+                event_timezone=self.user.userprofile.timezone if self.user.userprofile else 'UTC'
             )
-
             event.save()
             events.append(event)
-
             current_date += frequency_mapping.get(self.frequency, timedelta(days=1))
 
         return events
@@ -195,8 +198,8 @@ class Event(models.Model):
     is_archived = models.BooleanField(default=False)
     is_all_day = models.BooleanField(default=False)
     is_recurring = models.BooleanField(default=False)
-    recurrence_rule = models.JSONField(null=True, blank=True)
     recurrence_end_date = models.DateTimeField(null=True, blank=True)
+    event_timezone = models.CharField(max_length=50, default='UTC')
 
     def update_eta(self, new_eta):
         if new_eta <= self.start_time:
@@ -206,7 +209,7 @@ class Event(models.Model):
             for user in self.shared_with.all():
                 Notification.objects.create(
                     recipient=user,
-                    notification_type='eta_update',
+                    notification_type='update',
                     message=f"The ETA for event '{self.title}' has been updated to {new_eta.strftime('%I:%M %p')}."
                 )
         else:
@@ -218,8 +221,8 @@ class Event(models.Model):
 
         events = []
         current_date = self.start_time
-        rule = rrule.rrulestr(self.recurrence_rule)
 
+        rule = rrule.rrulestr(self.recurrence_rule)
         while current_date <= end_date:
             if self.recurrence_end_date and current_date > self.recurrence_end_date:
                 break
@@ -232,18 +235,25 @@ class Event(models.Model):
                 location=self.location,
                 created_by=self.created_by,
                 group=self.group,
-                is_recurring=False
+                is_recurring=False,
+                event_timezone=self.event_timezone
             )
+            new_event.save()
             events.append(new_event)
-
             current_date = rule.after(current_date, inc=False)
 
         return events
 
     def clean(self):
+        if self.is_all_day:
+            start_day = self.start_time.date()
+            end_day = self.end_time.date()
+            if start_day == end_day:
+                return
+
         if self.start_time >= self.end_time:
             raise ValidationError("End time must be after start time")
-
+        
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
@@ -280,9 +290,6 @@ class WorkSchedule(models.Model):
     end_date = models.DateField(null=True, blank=True)
 
     def handle_exception(self, date):
-        """
-        Handle exception for a particular date (e.g., changes in availability).
-        """
         if date < self.effective_date or (self.end_date and date > self.end_date):
             raise ValidationError("Date is outside the effective range for this schedule.")
 

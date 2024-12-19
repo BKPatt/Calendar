@@ -1,99 +1,56 @@
 import React from 'react';
-import { Box, Typography, Paper } from '@mui/material';
-import { eachDayOfInterval, startOfMonth, endOfMonth, format, isSameDay, isWithinInterval } from 'date-fns';
+import { Box, Typography, useTheme } from '@mui/material';
+import { startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import TimelineDay from './TimelineDay';
 import { Events } from '../../types/event';
+
+type ProcessedEvent = Events & {
+    calculatedTop: number;
+    calculatedHeight: number;
+    calculatedLeft: number;
+    calculatedWidth: number;
+    displayStartTime: string;
+    displayEndTime: string;
+};
 
 interface MonthViewProps {
     currentDate: Date;
-    events: Events[];
-    maxHeight?: string;
-    onSelect: (date: Date) => void;
+    processEventsForDay: (date: Date) => ProcessedEvent[];
+    getTooltipTimeDisplay: (startTime: Date, endTime: Date, isRecurring?: boolean, isAllDay?: boolean) => string;
 }
 
-const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, maxHeight = '600px', onSelect }) => {
-    const days = eachDayOfInterval({
-        start: startOfMonth(currentDate),
-        end: endOfMonth(currentDate),
+const MonthView: React.FC<MonthViewProps> = ({
+    currentDate,
+    processEventsForDay,
+    getTooltipTimeDisplay
+}) => {
+    const theme = useTheme();
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(monthStart);
+    const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+    const content = monthDays.map(day => {
+        const dayEvents = processEventsForDay(day);
+        return (
+            <TimelineDay
+                key={day.toISOString()}
+                date={day}
+                dayEvents={dayEvents}
+                getTooltipTimeDisplay={getTooltipTimeDisplay}
+            />
+        );
     });
 
-    const getEventsForDay = (day: Date) => {
-        return events.filter(event => {
-            const startTime = new Date(event.start_time);
-            const endTime = new Date(event.end_time);
-            return isWithinInterval(day, { start: startTime, end: endTime }) || isSameDay(day, startTime);
-        });
-    };
+    const noEventsInMonth = monthDays.every(day => processEventsForDay(day).length === 0);
 
     return (
-        <Box sx={{ height: maxHeight, overflowY: 'auto' }}>
-            <Typography variant="h6" gutterBottom>
-                {format(currentDate, 'MMMM yyyy')}
-            </Typography>
-            {days.map((day, index) => (
-                <Box
-                    key={index}
-                    sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        borderBottom: '1px solid lightgray',
-                        height: 60,
-                        position: 'relative',
-                    }}
-                >
-                    <Typography
-                        sx={{
-                            width: 60,
-                            textAlign: 'right',
-                            paddingRight: 2,
-                            color: 'gray',
-                            fontWeight: 'bold',
-                        }}
-                    >
-                        {format(day, 'EEE d')}
-                    </Typography>
-
-                    <Box
-                        sx={{
-                            flex: 1,
-                            position: 'relative',
-                            display: 'flex',
-                            overflowX: 'auto',
-                        }}
-                    >
-                        {getEventsForDay(day).map((event, eventIndex) => {
-                            const startTime = new Date(event.start_time);
-                            const endTime = new Date(event.end_time);
-                            const eventDurationInHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-                            const eventTopOffset = startTime.getMinutes();
-                            const eventHeight = eventDurationInHours * 60 - eventTopOffset;
-
-                            return (
-                                <Paper
-                                    key={eventIndex}
-                                    sx={{
-                                        position: 'relative',
-                                        width: '150px',
-                                        marginLeft: 1,
-                                        height: `${eventHeight}px`,
-                                        top: `${eventTopOffset}px`,
-                                        backgroundColor: event.color || 'blue',
-                                        color: 'white',
-                                        padding: 1,
-                                        borderRadius: 2,
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                    }}
-                                >
-                                    <Typography variant="caption" noWrap>
-                                        {event.title} ({format(startTime, 'h:mm a')} - {format(endTime, 'h:mm a')})
-                                    </Typography>
-                                </Paper>
-                            );
-                        })}
-                    </Box>
-                </Box>
-            ))}
+        <Box sx={{ gap: 1, display: 'flex', flexDirection: 'column', borderRadius: 1, p: 1, background: theme.palette.mode === 'dark' ? '#303030' : '#fafafa' }}>
+            {content}
+            {noEventsInMonth && (
+                <Typography variant="caption" sx={{ color: 'text.secondary', textAlign: 'center', mt: 2 }}>
+                    No events
+                </Typography>
+            )}
         </Box>
     );
 };

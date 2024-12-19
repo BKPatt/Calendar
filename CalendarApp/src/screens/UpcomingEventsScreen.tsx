@@ -1,14 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Container,
     Typography,
     Box,
     Paper,
-    TextField,
-    Select,
-    MenuItem,
-    FormControl,
-    InputLabel,
     Card,
     CardHeader,
     CardContent,
@@ -16,78 +11,57 @@ import {
     Avatar,
     Chip,
     Divider,
-    Pagination,
-    useTheme,
-    useMediaQuery,
-    Grid2,
     Button,
     CircularProgress,
+    Select,
+    MenuItem,
+    FormControl,
+    InputLabel,
+    Pagination
 } from '@mui/material';
-import {
-    Event as EventIcon,
-    Search as SearchIcon,
-    ArrowForward as ArrowForwardIcon,
-    AccessTime as TimeIcon,
-    Room as LocationIcon,
-} from '@mui/icons-material';
-import { useApi } from '../hooks/useApi';
-import { eventApi } from '../services/api/eventApi';
-import { EVENT_TYPES, Events } from '../types/event';
+import { Event as EventIcon, AccessTime as TimeIcon, Room as LocationIcon, ArrowForward as ArrowForwardIcon } from '@mui/icons-material';
 import { format, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import Grid2 from '@mui/material/Grid2';
+import { Events } from '../types/event';
+import { eventApi } from '../services/api/eventApi';
 
 const UpcomingEventsScreen: React.FC = () => {
     const navigate = useNavigate();
-    const { getUpcomingEvents } = eventApi;
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const [searchTerm, setSearchTerm] = useState('');
-    const [sortBy, setSortBy] = useState('date');
-    const [filterType, setFilterType] = useState('all');
+    const [events, setEvents] = useState<Events[]>([]);
+    const [count, setCount] = useState(0);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 6;
+    const [pageSize, setPageSize] = useState(9);
 
-    const { data: events, isLoading, error } = useApi<Events[]>(getUpcomingEvents);
+    const fetchEvents = async () => {
+        setIsLoading(true);
+        setError(null);
 
-    const filteredEvents = useMemo(() => {
-        if (!events) return [];
-        let filtered = events;
+        const params = {
+            page: currentPage.toString(),
+            page_size: pageSize.toString(),
+        };
 
-        if (searchTerm) {
-            filtered = filtered.filter(
-                (event) =>
-                    event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    (event.description && event.description.toLowerCase().includes(searchTerm.toLowerCase()))
-            );
+        const response = await eventApi.getAllEvents(params);
+        if (response.error) {
+            setError(response.error.join(', '));
+        } else if (response.data) {
+            setEvents(response.data);
+            setCount(response.count || 0);
         }
 
-        if (filterType !== 'all') {
-            filtered = filtered.filter((event) => event.event_type === filterType);
-        }
+        setIsLoading(false);
+    };
 
-        filtered.sort((a, b) => {
-            if (sortBy === 'date') {
-                return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
-            } else {
-                return a.title.localeCompare(b.title);
-            }
-        });
-
-        return filtered;
-    }, [events, searchTerm, sortBy, filterType]);
-
-    const paginatedEvents = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        return filteredEvents.slice(startIndex, endIndex);
-    }, [filteredEvents, currentPage]);
+    useEffect(() => {
+        fetchEvents();
+    }, [currentPage, pageSize]);
 
     const handleEventClick = (eventId: number) => {
         navigate(`/events/${eventId}`);
-    };
-
-    const handlePageChange = (event: React.ChangeEvent<unknown>, page: number) => {
-        setCurrentPage(page);
     };
 
     if (isLoading) {
@@ -112,58 +86,11 @@ const UpcomingEventsScreen: React.FC = () => {
         <Container maxWidth="lg">
             <Paper elevation={3} sx={{ mt: 4, p: 3, borderRadius: 2 }}>
                 <Typography variant="h4" component="h1" gutterBottom>
-                    Upcoming Events
+                    All Events
                 </Typography>
-                <Grid2 container spacing={2} alignItems="center" sx={{ mb: 3 }}>
-                    <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
-                        <TextField
-                            fullWidth
-                            variant="outlined"
-                            placeholder="Search events..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            slotProps={{
-                                input: {
-                                    startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />,
-                                },
-                            }}
-                        />
-                    </Grid2>
-                    <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
-                        <FormControl fullWidth variant="outlined">
-                            <InputLabel id="sort-by-label">Sort By</InputLabel>
-                            <Select
-                                labelId="sort-by-label"
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value as string)}
-                                label="Sort By"
-                            >
-                                <MenuItem value="date">Date</MenuItem>
-                                <MenuItem value="title">Title</MenuItem>
-                            </Select>
-                        </FormControl>
-                    </Grid2>
-                    <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
-                        <FormControl fullWidth variant="outlined">
-                            <InputLabel id="filter-type-label">Filter</InputLabel>
-                            <Select
-                                labelId="filter-type-label"
-                                value={filterType}
-                                onChange={(e) => setFilterType(e.target.value as string)}
-                                label="Filter"
-                            >
-                                {EVENT_TYPES.map((type) => (
-                                    <MenuItem key={type} value={type}>
-                                        {type.charAt(0).toUpperCase() + type.slice(1)}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                    </Grid2>
-                </Grid2>
 
                 <Grid2 container spacing={3}>
-                    {paginatedEvents.map((event) => (
+                    {events.map((event) => (
                         <Grid2 key={event.id} size={{ xs: 12, sm: 6, md: 4 }}>
                             <Card
                                 elevation={3}
@@ -174,13 +101,13 @@ const UpcomingEventsScreen: React.FC = () => {
                                     transition: 'transform 0.2s, box-shadow 0.2s',
                                     '&:hover': {
                                         transform: 'translateY(-5px)',
-                                        boxShadow: theme.shadows[6],
+                                        boxShadow: 6,
                                     },
                                 }}
                             >
                                 <CardHeader
                                     avatar={
-                                        <Avatar sx={{ bgcolor: event.color || theme.palette.primary.main }}>
+                                        <Avatar sx={{ bgcolor: event.color || '#007bff' }}>
                                             <EventIcon />
                                         </Avatar>
                                     }
@@ -227,24 +154,40 @@ const UpcomingEventsScreen: React.FC = () => {
                     ))}
                 </Grid2>
 
-                {filteredEvents.length === 0 && (
+                {events.length === 0 && (
                     <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
                         <Typography variant="h6" color="text.secondary">
-                            No upcoming events found.
+                            No events found.
                         </Typography>
                     </Box>
                 )}
 
-                {filteredEvents.length > itemsPerPage && (
-                    <Box display="flex" justifyContent="center" mt={4}>
-                        <Pagination
-                            count={Math.ceil(filteredEvents.length / itemsPerPage)}
-                            page={currentPage}
-                            onChange={handlePageChange}
-                            color="primary"
-                        />
-                    </Box>
-                )}
+                <Box display="flex" justifyContent="center" alignItems="center" mt={4} gap={2}>
+                    <FormControl variant="outlined">
+                        <InputLabel id="page-size-label">Page Size</InputLabel>
+                        <Select
+                            labelId="page-size-label"
+                            value={pageSize}
+                            onChange={(e) => {
+                                setPageSize(e.target.value as number);
+                                setCurrentPage(1);
+                            }}
+                            label="Page Size"
+                            sx={{ minWidth: 100 }}
+                        >
+                            <MenuItem value={3}>3</MenuItem>
+                            <MenuItem value={6}>6</MenuItem>
+                            <MenuItem value={9}>9</MenuItem>
+                            <MenuItem value={12}>12</MenuItem>
+                        </Select>
+                    </FormControl>
+                    <Pagination
+                        count={Math.ceil(count / pageSize)}
+                        page={currentPage}
+                        onChange={(e, page) => setCurrentPage(page)}
+                        color="primary"
+                    />
+                </Box>
             </Paper>
         </Container>
     );

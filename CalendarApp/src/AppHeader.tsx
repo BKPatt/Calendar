@@ -12,6 +12,8 @@ import {
     ListItemIcon,
     ListItemText,
     useTheme,
+    Tooltip,
+    Stack,
 } from '@mui/material';
 import {
     Menu as MenuIcon,
@@ -23,19 +25,16 @@ import { useAuth } from './contexts/AuthContext';
 
 interface AppHeaderProps {
     onMenuClick: () => void;
+    appName?: string;
 }
 
-const AppHeader: React.FC<AppHeaderProps> = ({ onMenuClick }) => {
+const AppHeader: React.FC<AppHeaderProps> = ({ onMenuClick, appName = 'SincIt' }) => {
     const { user, logout } = useAuth();
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const theme = useTheme();
 
     const handleProfileMenuClick = (event: React.MouseEvent<HTMLElement>) => {
-        if (anchorEl) {
-            setAnchorEl(null);
-        } else {
-            setAnchorEl(event.currentTarget);
-        }
+        setAnchorEl(anchorEl ? null : event.currentTarget);
     };
 
     const handleClose = () => {
@@ -48,34 +47,59 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onMenuClick }) => {
     };
 
     return (
-        <AppBar position="fixed" sx={{ zIndex: theme.zIndex.drawer + 1 }}>
-            <Toolbar>
-                <IconButton
-                    edge="start"
-                    color="inherit"
-                    aria-label="menu"
-                    onClick={onMenuClick}
-                    sx={{ mr: 2 }}
-                >
-                    <MenuIcon />
-                </IconButton>
-                <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-                    SincIt
-                </Typography>
+        <AppBar
+            position="fixed"
+            sx={{
+                backgroundColor: 'rgba(0,0,0,0.7)',
+                backdropFilter: 'blur(5px)',
+                borderBottom: '1px solid rgba(255,255,255,0.2)',
+                color: '#fff',
+            }}
+        >
+            <Toolbar sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                    <IconButton edge="start" aria-label="open drawer" onClick={onMenuClick}>
+                        <MenuIcon sx={{ color: '#fff' }} />
+                    </IconButton>
+                    <Box display="flex" flexDirection="column" justifyContent="center">
+                        <Typography
+                            variant="h6"
+                            noWrap
+                            component="div"
+                            sx={{ fontWeight: 700, letterSpacing: '0.5px', color: '#fff' }}
+                        >
+                            {appName}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                            Powering Your Productivity
+                        </Typography>
+                    </Box>
+                </Stack>
                 {user && (
                     <Box>
-                        <IconButton
-                            edge="end"
-                            aria-label="account of current user"
-                            aria-controls="menu-appbar"
-                            aria-haspopup="true"
-                            onClick={handleProfileMenuClick}
-                            color="inherit"
-                        >
-                            <Avatar sx={{ width: 32, height: 32, backgroundColor: theme.palette.secondary.main }}>
-                                {user.username.charAt(0).toUpperCase()}
-                            </Avatar>
-                        </IconButton>
+                        <Tooltip title="Open user menu">
+                            <IconButton
+                                edge="end"
+                                aria-label="account of current user"
+                                aria-controls="menu-appbar"
+                                aria-haspopup="true"
+                                onClick={handleProfileMenuClick}
+                                sx={{ p: 0 }}
+                            >
+                                <Avatar
+                                    sx={{
+                                        width: 40,
+                                        height: 40,
+                                        bgcolor: theme.palette.secondary.main,
+                                        color: '#fff',
+                                        fontWeight: 600,
+                                        textTransform: 'uppercase',
+                                    }}
+                                >
+                                    {user.username.charAt(0)}
+                                </Avatar>
+                            </IconButton>
+                        </Tooltip>
                         <Menu
                             id="menu-appbar"
                             anchorEl={anchorEl}
@@ -83,7 +107,26 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onMenuClick }) => {
                             onClose={handleClose}
                             anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                             transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                            keepMounted
+                            PaperProps={{
+                                elevation: 6,
+                                sx: {
+                                    minWidth: 200,
+                                    mt: 1.5,
+                                    overflow: 'visible',
+                                    '&:before': {
+                                        content: '""',
+                                        display: 'block',
+                                        position: 'absolute',
+                                        top: 0,
+                                        right: 14,
+                                        width: 10,
+                                        height: 10,
+                                        bgcolor: 'background.paper',
+                                        transform: 'translateY(-50%) rotate(45deg)',
+                                        zIndex: 0,
+                                    },
+                                },
+                            }}
                         >
                             <MenuItem onClick={handleClose} component="a" href="/profile">
                                 <ListItemIcon>

@@ -1,35 +1,20 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
     Container,
-    Typography,
     Box,
     Paper,
-    Button,
     CircularProgress,
-    Dialog,
-    DialogContent,
     useTheme,
-    useMediaQuery,
-    IconButton,
-    Tooltip,
-    Grid2,
+    useMediaQuery
 } from '@mui/material';
-import {
-    ChevronLeft,
-    ChevronRight,
-    Today as TodayIcon,
-    Add as AddIcon,
-    ViewDay,
-    ViewWeek,
-    CalendarViewMonth,
-} from '@mui/icons-material';
+import Grid2 from '@mui/material/Grid2';
 import { eventApi } from '../services/api/eventApi';
 import { Events } from '../types/event';
-import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, parseISO, startOfDay } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import Calendar from '../components/Calendar/Calendar';
-import EventForm from '../components/Event/EventForm';
 import CalendarGlance from '../components/Calendar/CalendarGlance';
+import EventDialog from '../components/Dialogs/EventDialog';
 
 const CalendarScreen: React.FC = () => {
     const { getEvents } = eventApi;
@@ -42,18 +27,46 @@ const CalendarScreen: React.FC = () => {
     const [isLoadingEvents, setIsLoadingEvents] = useState<boolean>(true);
     const [isEventFormOpen, setIsEventFormOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
+    const [calendarHeight, setCalendarHeight] = useState<number | null>(null);
+
+    const calendarContainerRef = useRef<HTMLDivElement>(null);
 
     const fetchEventsForMonth = useCallback(async (month: Date) => {
         setIsLoadingEvents(true);
         try {
             const start_date = format(startOfMonth(month), 'yyyy-MM-dd');
             const end_date = format(endOfMonth(month), 'yyyy-MM-dd');
-            const response = await getEvents({
-                start_date: start_date,
-                end_date: end_date,
-            });
-            console.log(response.data)
-            setEvents(response.data || []);
+            const response = await getEvents({ start_date, end_date });
+            const fetchedEvents = response.data || [];
+
+            const dayMap: Record<string, Events> = {};
+            // Group by id and date, picking the earliest occurrence for each (id, date)
+            for (const evt of fetchedEvents) {
+                const eventStart = parseISO(evt.start_time);
+                const eventDateStr = format(startOfDay(eventStart), 'yyyy-MM-dd');
+                const key = `${evt.id}-${eventDateStr}`;
+
+                // If we haven't added this event for the day or if this occurrence is earlier, take this one
+                if (!dayMap[key]) {
+                    dayMap[key] = evt;
+                } else {
+                    // Compare start times and keep the earliest
+                    const existing = dayMap[key];
+                    if (parseISO(evt.start_time).getTime() < parseISO(existing.start_time).getTime()) {
+                        dayMap[key] = evt;
+                    }
+                }
+            }
+
+            const normalizedEvents = Object.values(dayMap);
+
+            normalizedEvents.sort(
+                (a, b) => parseISO(a.start_time).getTime() - parseISO(b.start_time).getTime()
+            );
+
+            console.log(normalizedEvents)
+
+            setEvents(normalizedEvents);
         } catch (error) {
             console.error('Failed to fetch events:', error);
         } finally {
@@ -65,6 +78,12 @@ const CalendarScreen: React.FC = () => {
         fetchEventsForMonth(currentMonth);
     }, [currentMonth, fetchEventsForMonth]);
 
+    useEffect(() => {
+        if (calendarContainerRef.current) {
+            setCalendarHeight(calendarContainerRef.current.offsetHeight);
+        }
+    }, [isLoadingEvents, events]);
+
     const handleCreateEvent = () => {
         setIsEventFormOpen(true);
     };
@@ -74,8 +93,8 @@ const CalendarScreen: React.FC = () => {
         fetchEventsForMonth(currentMonth);
     };
 
-    const changeMonth = (amount: number) => {
-        setCurrentMonth(prevMonth => amount > 0 ? addMonths(prevMonth, 1) : subMonths(prevMonth, 1));
+    const changeMonth = (newDate: Date) => {
+        setCurrentMonth(newDate);
     };
 
     const goToToday = () => {
@@ -85,63 +104,55 @@ const CalendarScreen: React.FC = () => {
     return (
         <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
             <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-                <Grid2 container spacing={3}>
-                    <Grid2 size={{ xs: 12, sm: 4, md: 3 }}>
+                <Grid2 container spacing={3} columns={12} sx={{ alignItems: 'flex-start' }}>
+                    <Grid2
+                        size={{ xs: 12, md: 4 }}
+                        sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            overflowY: 'auto',
+                            maxHeight: calendarHeight ? `${calendarHeight}px` : 'auto',
+                            borderRight: `1px solid ${theme.palette.divider}`
+                        }}
+                    >
                         <CalendarGlance events={events} />
                     </Grid2>
-                    <Grid2 size={{ xs: 12, sm: 8, md: 9 }}>
-                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                            <Typography variant="h4" component="h1">
-                                {format(currentMonth, 'MMMM yyyy')}
-                            </Typography>
-                            <Box>
-                                <IconButton onClick={() => changeMonth(-1)} aria-label="Previous month">
-                                    <ChevronLeft />
-                                </IconButton>
-                                <IconButton onClick={goToToday} aria-label="Go to today">
-                                    <TodayIcon />
-                                </IconButton>
-                                <IconButton onClick={() => changeMonth(1)} aria-label="Next month">
-                                    <ChevronRight />
-                                </IconButton>
-                            </Box>
-                        </Box>
-
+                    <Grid2
+                        size={{ xs: 12, md: 8 }}
+                        sx={{
+                            display: 'flex',
+                            flexDirection: 'column'
+                        }}
+                        ref={calendarContainerRef}
+                    >
                         {isLoadingEvents ? (
-                            <Box display="flex" justifyContent="center" alignItems="center" height="50vh">
+                            <Box display="flex" justifyContent="center" alignItems="center" flexGrow={1}>
                                 <CircularProgress />
                             </Box>
                         ) : (
-                            <Calendar
-                                currentMonth={currentMonth}
-                                events={events}
-                                onDateClick={(date) => console.log('Date clicked:', date)}
-                                onEventClick={(eventId) => navigate(`/events/${eventId}`)}
-                                changeMonth={changeMonth}
-                                goToToday={goToToday}
-                                handleCreateEvent={handleCreateEvent}
-                                viewMode={viewMode}
-                            />
+                            <Box sx={{ flexGrow: 1 }}>
+                                <Calendar
+                                    currentMonth={currentMonth}
+                                    events={events}
+                                    onDateClick={(date) => console.log('Date clicked:', date)}
+                                    onEventClick={(eventId) => navigate(`/events/${eventId}`)}
+                                    changeMonth={changeMonth}
+                                    goToToday={goToToday}
+                                    handleCreateEvent={handleCreateEvent}
+                                    viewMode={viewMode}
+                                    setViewMode={(mode) => setViewMode(mode)}
+                                />
+                            </Box>
                         )}
                     </Grid2>
                 </Grid2>
             </Paper>
 
-            <Dialog
+            <EventDialog
                 open={isEventFormOpen}
                 onClose={handleCloseEventForm}
-                fullWidth
-                maxWidth="md"
-                fullScreen={isMobile}
-            >
-                <DialogContent>
-                    <EventForm
-                        onClose={handleCloseEventForm}
-                        onEventCreated={handleCloseEventForm}
-                        open={isEventFormOpen}
-                    />
-                </DialogContent>
-            </Dialog>
+                onEventCreated={handleCloseEventForm}
+            />
         </Container>
     );
 };

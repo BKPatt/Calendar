@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Container,
     Typography,
     Box,
     Paper,
-    Button,
     CircularProgress,
     Dialog,
     DialogContent,
     useTheme,
-    Grid2,
+    useMediaQuery,
+    ButtonProps
 } from '@mui/material';
+import Grid2 from '@mui/material/Grid2';
 import {
     Add as AddIcon,
     Group as GroupIcon,
@@ -23,219 +24,202 @@ import { useApi } from '../hooks/useApi';
 import { eventApi } from '../services/api/eventApi';
 import { groupApi } from '../services/api/groupApi';
 import { Events } from '../types/event';
-import { startOfMonth, endOfMonth, format, addMonths } from 'date-fns';
+import { Group } from '../types/group';
+import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { addMonths } from 'date-fns';
 import Calendar from '../components/Calendar/Calendar';
 import EventForm from '../components/Event/EventForm';
 import UpcomingEventsWidget from '../components/Event/UpcomingEventsWidget';
 import GroupForm from '../components/Group/GroupForm';
 import InvitationForm from '../components/Group/InvitationForm';
-import { Group } from '../types/group';
 import GroupOverview from '../components/Group/GroupOverview';
+import QuickActions from '../navigation/QuickActions';
 
 const HomeScreen: React.FC = () => {
-    const { getEvents, getUpcomingEvents } = eventApi;
-    const { getGroups } = groupApi;
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { getEvents, getUpcomingEvents } = eventApi;
+    const { getGroups } = groupApi;
 
     const [events, setEvents] = useState<Events[]>([]);
     const [isLoadingEvents, setIsLoadingEvents] = useState<boolean>(true);
-    const { data: upcomingEvents, isLoading: isLoadingUpcomingEvents, error: errorEvents, refetch: refetchEvents } = useApi<Events[]>(getUpcomingEvents);
-
+    const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
+    const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
     const [isEventCreateOpen, setIsEventCreateOpen] = useState(false);
     const [isGroupCreateOpen, setIsGroupCreateOpen] = useState(false);
     const [isGroupEditOpen, setIsGroupEditOpen] = useState(false);
     const [isInvitationOpen, setIsInvitationOpen] = useState(false);
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
-    const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
 
-    const { data: groups, isLoading: isLoadingGroups } = useApi(getGroups);
+    const { data: upcomingEvents, isLoading: isLoadingUpcomingEvents, error: upcomingEventsError } = useApi<Events[]>(getUpcomingEvents);
+    const { data: groups } = useApi(getGroups);
 
-    const fetchEventsForMonth = async (month: Date) => {
+    const calendarContainerRef = useRef<HTMLDivElement>(null);
+    const [calendarHeight, setCalendarHeight] = useState<number | null>(null);
+
+    const fetchEventsForMonth = useCallback(async (month: Date) => {
         setIsLoadingEvents(true);
         try {
             const start_date = format(startOfMonth(month), 'yyyy-MM-dd');
             const end_date = format(endOfMonth(month), 'yyyy-MM-dd');
             const response = await getEvents({
-                start_date: start_date,
-                end_date: end_date,
+                start_date,
+                end_date,
                 user_id: user?.id?.toString() || '',
             });
             setEvents(response.data || []);
-        } catch (error) {
-            console.error('Failed to fetch events:', error);
-        } finally {
+        } catch { }
+        finally {
             setIsLoadingEvents(false);
         }
-    };
+    }, [getEvents, user]);
 
     useEffect(() => {
         fetchEventsForMonth(currentMonth);
-    }, [currentMonth]);
+    }, [currentMonth, fetchEventsForMonth]);
 
-    const handleCreateEvent = () => {
-        setIsEventCreateOpen(true);
-    };
+    useEffect(() => {
+        if (calendarContainerRef.current) {
+            setCalendarHeight(calendarContainerRef.current.offsetHeight);
+        }
+    }, [isLoadingEvents, events, isLoadingUpcomingEvents, upcomingEvents]);
 
-    const handleCloseEventCreate = () => {
-        setIsEventCreateOpen(false);
-        fetchEventsForMonth(currentMonth);
-    };
-
-    const handleCreateGroup = () => {
-        setIsGroupCreateOpen(true);
-    };
-
-    const handleCloseGroupCreate = () => {
-        setIsGroupCreateOpen(false);
-    };
-
-    const handleEditGroup = () => {
-        setIsGroupEditOpen(true);
-    };
-
-    const handleCloseGroupEdit = () => {
-        setIsGroupEditOpen(false);
-    };
-
-    const handleInvitePeople = () => {
-        setIsInvitationOpen(true);
-    };
-
-    const handleCloseInvitation = () => {
-        setIsInvitationOpen(false);
-    };
-
-    const handleViewGroups = () => {
-        navigate('/groups');
-    };
-
-    const handleShareEvent = () => {
-        // Implement share event functionality
-    };
-
-    const changeMonth = (amount: number) => {
-        setCurrentMonth(addMonths(currentMonth, amount));
+    // Updated changeMonth function to accept a Date instead of an amount
+    const changeMonth = (newDate: Date) => {
+        setCurrentMonth(newDate);
     };
 
     const goToToday = () => {
         setCurrentMonth(startOfMonth(new Date()));
     };
 
-    return (
-        <Container maxWidth="xl" sx={{ p: 0 }}>
-            <Box my={4}>
-                <Typography variant="h4" component="h1" gutterBottom align='center'>
-                    Welcome, {user?.firstName || 'User'}!
-                </Typography>
+    const handleCreateEvent = () => setIsEventCreateOpen(true);
+    const handleCloseEventCreate = () => {
+        setIsEventCreateOpen(false);
+        fetchEventsForMonth(currentMonth);
+    };
+    const handleCreateGroup = () => setIsGroupCreateOpen(true);
+    const handleCloseGroupCreate = () => setIsGroupCreateOpen(false);
+    const handleEditGroup = () => setIsGroupEditOpen(true);
+    const handleCloseGroupEdit = () => setIsGroupEditOpen(false);
+    const handleInvitePeople = () => setIsInvitationOpen(true);
+    const handleCloseInvitation = () => setIsInvitationOpen(false);
+    const handleViewGroups = () => navigate('/groups');
+    const handleShareEvent = () => { };
 
-                <Grid2 container spacing={3}>
-                    <Grid2 size={{ xs: 12, lg: 2 }}>
-                        <Paper elevation={3} sx={{ p: 2 }}>
+    const actions = [
+        {
+            label: 'Create Event',
+            icon: <AddIcon />,
+            variant: 'contained' as ButtonProps['variant'],
+            color: 'primary' as ButtonProps['color'],
+            onClick: handleCreateEvent
+        },
+        {
+            label: 'View Groups',
+            icon: <GroupIcon />,
+            variant: 'outlined' as ButtonProps['variant'],
+            onClick: handleViewGroups
+        },
+        {
+            label: 'Create Group',
+            icon: <AddIcon />,
+            variant: 'contained' as ButtonProps['variant'],
+            color: 'secondary' as ButtonProps['color'],
+            onClick: handleCreateGroup
+        },
+        ...(groups && groups.length > 0 ? [{
+            label: 'Edit Group',
+            icon: <EditIcon />,
+            variant: 'outlined' as ButtonProps['variant'],
+            onClick: handleEditGroup
+        }] : []),
+        {
+            label: 'Invite People',
+            icon: <PersonAddIcon />,
+            variant: 'contained' as ButtonProps['variant'],
+            color: 'primary' as ButtonProps['color'],
+            onClick: handleInvitePeople
+        },
+        {
+            label: 'Share Event',
+            icon: <ShareIcon />,
+            variant: 'outlined' as ButtonProps['variant'],
+            onClick: handleShareEvent
+        },
+    ];
+
+    return (
+        <Container maxWidth="xl" sx={{ p: isMobile ? 1 : 0 }}>
+            <Box my={4}>
+                <QuickActions actions={actions} />
+                <Grid2 container spacing={3} columns={12}>
+                    <Grid2
+                        size={{ xs: 12, lg: 3 }}
+                        sx={{ borderRight: `1px solid ${theme.palette.divider}` }}
+                    >
+                        <Paper
+                            elevation={3}
+                            sx={{
+                                p: 2,
+                                height: calendarHeight ? `${calendarHeight}px` : 'auto',
+                                display: 'flex',
+                                flexDirection: 'column'
+                            }}
+                        >
                             {isLoadingUpcomingEvents ? (
-                                <CircularProgress />
-                            ) : errorEvents ? (
-                                <Typography variant="body2" color="error">
-                                    Unable to load upcoming events.
-                                </Typography>
-                            ) : upcomingEvents && upcomingEvents.length > 0 ? (
+                                <Box display="flex" justifyContent="center" alignItems="center" py={3} flexGrow={1}>
+                                    <CircularProgress />
+                                </Box>
+                            ) : upcomingEventsError ? (
+                                <Box flexGrow={1} display="flex" alignItems="center" justifyContent="center">
+                                    <Typography variant="body2" color="error" align="center">
+                                        Unable to load upcoming events.
+                                    </Typography>
+                                </Box>
+                            ) : (upcomingEvents && upcomingEvents.length > 0) ? (
                                 <UpcomingEventsWidget />
                             ) : (
-                                <Typography variant="body2" color="textSecondary">
-                                    No upcoming events available.
-                                </Typography>
+                                <Box flexGrow={1} display="flex" alignItems="center" justifyContent="center">
+                                    <Typography variant="body2" color="text.secondary" align="center">
+                                        No upcoming events available.
+                                    </Typography>
+                                </Box>
                             )}
                         </Paper>
                     </Grid2>
-
-                    <Grid2 size={{ xs: 12, lg: 8 }}>
-                        <Paper elevation={3} sx={{ p: 2 }}>
+                    <Grid2
+                        size={{ xs: 12, lg: 9 }}
+                        sx={{ display: 'flex', flexDirection: 'column' }}
+                        ref={calendarContainerRef}
+                    >
+                        <Paper elevation={3} sx={{ p: 2, flexGrow: 1 }}>
                             {isLoadingEvents ? (
-                                <CircularProgress />
+                                <Box display="flex" justifyContent="center" alignItems="center" height="60vh">
+                                    <CircularProgress />
+                                </Box>
                             ) : (
                                 <Calendar
                                     currentMonth={currentMonth}
                                     events={events}
-                                    onDateClick={(date) => console.log('Date clicked:', date)}
+                                    onDateClick={() => { }}
                                     onEventClick={(eventId) => navigate(`/events/${eventId}`)}
                                     changeMonth={changeMonth}
                                     goToToday={goToToday}
                                     handleCreateEvent={handleCreateEvent}
-                                    viewMode={'month'}
+                                    viewMode={viewMode}
+                                    setViewMode={setViewMode}
                                 />
                             )}
                         </Paper>
                     </Grid2>
-
-                    <Grid2 size={{ xs: 12, lg: 2 }}>
-                        <Paper elevation={3} sx={{ p: 2 }}>
-                            <Typography variant="h6" gutterBottom>
-                                Quick Actions
-                            </Typography>
-                            <Box display="flex" flexDirection="column" gap={2}>
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    startIcon={<AddIcon />}
-                                    fullWidth
-                                    onClick={handleCreateEvent}
-                                >
-                                    Create Event
-                                </Button>
-                                <Button
-                                    variant="outlined"
-                                    startIcon={<GroupIcon />}
-                                    fullWidth
-                                    onClick={handleViewGroups}
-                                >
-                                    View Groups
-                                </Button>
-                                <Button
-                                    variant="contained"
-                                    color="secondary"
-                                    startIcon={<AddIcon />}
-                                    fullWidth
-                                    onClick={handleCreateGroup}
-                                >
-                                    Create Group
-                                </Button>
-                                {groups && groups.length > 0 && (
-                                    <Button
-                                        variant="outlined"
-                                        startIcon={<EditIcon />}
-                                        fullWidth
-                                        onClick={handleEditGroup}
-                                    >
-                                        Edit Group
-                                    </Button>
-                                )}
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    startIcon={<PersonAddIcon />}
-                                    fullWidth
-                                    onClick={handleInvitePeople}
-                                >
-                                    Invite People
-                                </Button>
-                                <Button
-                                    variant="outlined"
-                                    startIcon={<ShareIcon />}
-                                    fullWidth
-                                    onClick={handleShareEvent}
-                                >
-                                    Share Event
-                                </Button>
-                            </Box>
-                        </Paper>
-                    </Grid2>
                 </Grid2>
             </Box>
-
             <Box my={4}>
-                <Grid2 container spacing={3}>
+                <Grid2 container spacing={3} columns={12}>
                     <Grid2 size={{ xs: 12, lg: 5 }}>
                         <Paper elevation={3} sx={{ p: 2 }}>
                             <Box sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -245,13 +229,7 @@ const HomeScreen: React.FC = () => {
                     </Grid2>
                 </Grid2>
             </Box>
-
-            <Dialog
-                open={isEventCreateOpen}
-                onClose={handleCloseEventCreate}
-                fullWidth
-                maxWidth="sm"
-            >
+            <Dialog open={isEventCreateOpen} onClose={handleCloseEventCreate} fullWidth maxWidth="sm">
                 <DialogContent>
                     <EventForm
                         onClose={handleCloseEventCreate}
@@ -260,13 +238,7 @@ const HomeScreen: React.FC = () => {
                     />
                 </DialogContent>
             </Dialog>
-
-            <Dialog
-                open={isGroupCreateOpen}
-                onClose={handleCloseGroupCreate}
-                fullWidth
-                maxWidth="sm"
-            >
+            <Dialog open={isGroupCreateOpen} onClose={handleCloseGroupCreate} fullWidth maxWidth="sm">
                 <DialogContent>
                     <GroupForm
                         onClose={handleCloseGroupCreate}
@@ -275,13 +247,7 @@ const HomeScreen: React.FC = () => {
                     />
                 </DialogContent>
             </Dialog>
-
-            <Dialog
-                open={isGroupEditOpen}
-                onClose={handleCloseGroupEdit}
-                fullWidth
-                maxWidth="sm"
-            >
+            <Dialog open={isGroupEditOpen} onClose={handleCloseGroupEdit} fullWidth maxWidth="sm">
                 <DialogContent>
                     <GroupForm
                         onClose={handleCloseGroupEdit}
@@ -291,13 +257,7 @@ const HomeScreen: React.FC = () => {
                     />
                 </DialogContent>
             </Dialog>
-
-            <Dialog
-                open={isInvitationOpen}
-                onClose={handleCloseInvitation}
-                fullWidth
-                maxWidth="sm"
-            >
+            <Dialog open={isInvitationOpen} onClose={handleCloseInvitation} fullWidth maxWidth="sm">
                 <DialogContent>
                     <InvitationForm
                         onClose={handleCloseInvitation}

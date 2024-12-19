@@ -5,10 +5,11 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.db.models import Q
+from datetime import datetime
+import zoneinfo
 
 from ..models import Invitation, Group, CustomUser, Event
 from ..serializers import InvitationSerializer
-from ..group_management import GroupInvitationManager
 
 class InvitationViewSet(viewsets.ModelViewSet):
     queryset = Invitation.objects.all()
@@ -24,10 +25,17 @@ class InvitationViewSet(viewsets.ModelViewSet):
         group_id = request.data.get('group')
         event_id = request.data.get('event')
 
+        if not recipient_id:
+            return Response({'error': 'recipient is required'}, status=status.HTTP_400_BAD_REQUEST)
+
         recipient = get_object_or_404(CustomUser, id=recipient_id)
 
         if invitation_type == 'group':
+            if not group_id:
+                return Response({'error': 'group is required for group invitation'}, status=status.HTTP_400_BAD_REQUEST)
             group = get_object_or_404(Group, id=group_id)
+            if request.user != group.admin:
+                return Response({'error': 'Not authorized to invite to this group'}, status=status.HTTP_403_FORBIDDEN)
             invitation = Invitation.objects.create(
                 sender=request.user,
                 recipient=recipient,
@@ -35,7 +43,11 @@ class InvitationViewSet(viewsets.ModelViewSet):
                 invitation_type='group'
             )
         elif invitation_type == 'event':
+            if not event_id:
+                return Response({'error': 'event is required for event invitation'}, status=status.HTTP_400_BAD_REQUEST)
             event = get_object_or_404(Event, id=event_id)
+            if request.user != event.created_by:
+                return Response({'error': 'Not authorized to invite to this event'}, status=status.HTTP_403_FORBIDDEN)
             invitation = Invitation.objects.create(
                 sender=request.user,
                 recipient=recipient,
@@ -55,14 +67,14 @@ class InvitationViewSet(viewsets.ModelViewSet):
             return Response({'status': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
         if invitation.status != 'pending':
             return Response({'status': 'Invitation already processed'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         invitation.status = 'accepted'
         invitation.responded_at = timezone.now()
         invitation.save()
 
-        if invitation.invitation_type == 'group':
+        if invitation.invitation_type == 'group' and invitation.group:
             invitation.group.members.add(request.user)
-        elif invitation.invitation_type == 'event':
+        elif invitation.invitation_type == 'event' and invitation.event:
             invitation.event.shared_with.add(request.user)
 
         return Response({'status': 'Invitation accepted'})
@@ -74,11 +86,12 @@ class InvitationViewSet(viewsets.ModelViewSet):
             return Response({'status': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
         if invitation.status != 'pending':
             return Response({'status': 'Invitation already processed'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         invitation.status = 'declined'
         invitation.responded_at = timezone.now()
         invitation.save()
         return Response({'status': 'Invitation declined'})
+
 
 class GroupInvitationView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -86,10 +99,10 @@ class GroupInvitationView(APIView):
     def post(self, request, group_id, user_id):
         group = get_object_or_404(Group, id=group_id)
         user = get_object_or_404(CustomUser, id=user_id)
-        
+
         if request.user != group.admin:
             return Response({'status': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         invitation, created = Invitation.objects.get_or_create(
             sender=request.user,
             recipient=user,
@@ -97,11 +110,12 @@ class GroupInvitationView(APIView):
             invitation_type='group',
             defaults={'status': 'pending'}
         )
-        
+
         if not created:
             return Response({'status': 'Invitation already exists'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         return Response({'status': 'Invitation sent successfully'}, status=status.HTTP_201_CREATED)
+
 
 class EventInvitationView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -109,10 +123,10 @@ class EventInvitationView(APIView):
     def post(self, request, event_id, user_id):
         event = get_object_or_404(Event, id=event_id)
         user = get_object_or_404(CustomUser, id=user_id)
-        
+
         if request.user != event.created_by:
             return Response({'status': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         invitation, created = Invitation.objects.get_or_create(
             sender=request.user,
             recipient=user,
@@ -120,8 +134,8 @@ class EventInvitationView(APIView):
             invitation_type='event',
             defaults={'status': 'pending'}
         )
-        
+
         if not created:
             return Response({'status': 'Invitation already exists'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         return Response({'status': 'Invitation sent successfully'}, status=status.HTTP_201_CREATED)

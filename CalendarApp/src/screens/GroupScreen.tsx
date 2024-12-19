@@ -8,11 +8,6 @@ import {
     CircularProgress,
     TextField,
     InputAdornment,
-    Grid2,
-    Card,
-    CardHeader,
-    CardContent,
-    CardActions,
     Avatar,
     IconButton,
     Chip,
@@ -22,11 +17,12 @@ import {
     ListItemAvatar,
     ListItemText,
     Divider,
+    Card,
+    CardHeader,
+    CardContent,
+    CardActions,
     useTheme,
     useMediaQuery,
-    Dialog,
-    DialogTitle,
-    DialogContent,
 } from '@mui/material';
 import {
     Group as GroupIcon,
@@ -39,16 +35,17 @@ import {
     Public as PublicIcon,
     Lock as LockIcon,
 } from '@mui/icons-material';
+import Grid2 from '@mui/material/Grid2';
 import { useAuth } from '../hooks/useAuth';
 import { groupApi } from '../services/api/groupApi';
 import { Group } from '../types/group';
 import { Events } from '../types/event';
 import { formatDate } from '../utils/dateHelpers';
 import { useNavigate } from 'react-router-dom';
-import GroupForm from '../components/Group/GroupForm';
+import CreateGroupDialog from '../components/Dialogs/CreateGroupDialog';
 
 const GroupScreen: React.FC = () => {
-    const { getGroups, createGroup, getGroupEvents } = groupApi;
+    const { getGroups, getGroupEvents } = groupApi;
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const { user } = useAuth();
@@ -167,10 +164,28 @@ const GroupScreen: React.FC = () => {
     };
 
     return (
-        <Container maxWidth="lg">
-            <Paper elevation={3} sx={{ mt: 4, p: 3, borderRadius: 2 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                    <Typography variant="h4" component="h1">
+        <Container maxWidth="lg" sx={{ pb: 4 }}>
+            <Paper
+                elevation={3}
+                sx={{
+                    mt: 4,
+                    p: 3,
+                    bgcolor: theme.palette.background.paper,
+                    borderRadius: 0,
+                    border: `1px solid ${theme.palette.divider}`,
+                }}
+            >
+                <Box
+                    display="flex"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    mb={3}
+                    sx={{
+                        borderBottom: `1px solid ${theme.palette.divider}`,
+                        pb: 2,
+                    }}
+                >
+                    <Typography variant="h4" component="h1" color="text.primary" sx={{ fontWeight: 600 }}>
                         My Groups
                     </Typography>
                     <Button
@@ -178,6 +193,13 @@ const GroupScreen: React.FC = () => {
                         color="primary"
                         startIcon={<AddIcon />}
                         onClick={handleCreateGroup}
+                        sx={{
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            borderRadius: 0,
+                            backgroundColor: theme.palette.grey[200],
+                            color: theme.palette.text.primary,
+                        }}
                     >
                         Create Group
                     </Button>
@@ -191,11 +213,15 @@ const GroupScreen: React.FC = () => {
                     InputProps={{
                         startAdornment: (
                             <InputAdornment position="start">
-                                <SearchIcon />
+                                <SearchIcon color="action" />
                             </InputAdornment>
                         ),
                     }}
-                    sx={{ mb: 3 }}
+                    sx={{
+                        mb: 3,
+                        bgcolor: theme.palette.background.default,
+                        borderRadius: 0,
+                    }}
                 />
                 {isLoading ? (
                     <Box display="flex" justifyContent="center" mt={4}>
@@ -206,9 +232,13 @@ const GroupScreen: React.FC = () => {
                         {error}
                     </Typography>
                 ) : filteredGroups.length > 0 ? (
-                    <Grid2 container spacing={3}>
+                    <Grid2 container spacing={3} component="div">
                         {filteredGroups.map((group) => (
-                            <Grid2 key={group.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                            <Grid2
+                                key={group.id}
+                                component="div"
+                                size={{ xs: 12, sm: 6, md: 4 }}
+                            >
                                 <Card
                                     elevation={3}
                                     sx={{
@@ -216,6 +246,9 @@ const GroupScreen: React.FC = () => {
                                         display: 'flex',
                                         flexDirection: 'column',
                                         transition: 'transform 0.2s, box-shadow 0.2s',
+                                        bgcolor: theme.palette.background.paper,
+                                        borderRadius: 0,
+                                        border: `1px solid ${theme.palette.divider}`,
                                         '&:hover': {
                                             transform: 'translateY(-5px)',
                                             boxShadow: theme.shadows[6],
@@ -224,7 +257,7 @@ const GroupScreen: React.FC = () => {
                                 >
                                     <CardHeader
                                         avatar={
-                                            <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                                            <Avatar sx={{ bgcolor: theme.palette.primary.main, borderRadius: 0 }}>
                                                 <GroupIcon />
                                             </Avatar>
                                         }
@@ -233,23 +266,43 @@ const GroupScreen: React.FC = () => {
                                                 onClick={() => handleExpandClick(group.id)}
                                                 aria-expanded={expandedGroupId === group.id}
                                                 aria-label="show more"
+                                                sx={{
+                                                    borderRadius: 0,
+                                                }}
                                             >
                                                 {expandedGroupId === group.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                                             </IconButton>
                                         }
-                                        title={group.name}
-                                        subheader={`${group.members.length} members`}
+                                        title={
+                                            <Typography variant="h6" color="text.primary" sx={{ fontWeight: 600 }}>
+                                                {group.name}
+                                            </Typography>
+                                        }
+                                        subheader={
+                                            <Typography variant="body2" color="text.secondary">
+                                                {group.members.length} members
+                                            </Typography>
+                                        }
+                                        sx={{
+                                            pb: 0,
+                                        }}
                                     />
-                                    <CardContent sx={{ flexGrow: 1 }}>
+                                    <CardContent sx={{ flexGrow: 1, p: 2 }}>
                                         <Typography variant="body2" color="text.secondary" gutterBottom>
-                                            {group.description || 'No description provided'}
+                                            {group.description || <em>No description provided</em>}
                                         </Typography>
-                                        <Box mt={2} display="flex" justifyContent="space-between" alignItems="center">
+                                        <Box
+                                            mt={2}
+                                            display="flex"
+                                            justifyContent="space-between"
+                                            alignItems="center"
+                                        >
                                             <Chip
                                                 icon={group.is_public ? <PublicIcon /> : <LockIcon />}
                                                 label={group.is_public ? 'Public' : 'Private'}
-                                                color={group.is_public ? 'success' : 'default'}
+                                                color={group.is_public ? 'primary' : 'default'}
                                                 size="small"
+                                                sx={{ fontWeight: 500, borderRadius: 0 }}
                                             />
                                             <Typography variant="caption" color="text.secondary">
                                                 Created: {formatDate(group.createdAt, 'PP')}
@@ -258,15 +311,15 @@ const GroupScreen: React.FC = () => {
                                     </CardContent>
                                     <Collapse in={expandedGroupId === group.id} timeout="auto" unmountOnExit>
                                         <Divider />
-                                        <CardContent>
-                                            <Typography variant="subtitle1" gutterBottom>
+                                        <CardContent sx={{ p: 2 }}>
+                                            <Typography variant="subtitle1" gutterBottom color="text.primary">
                                                 Members:
                                             </Typography>
-                                            <List>
+                                            <List disablePadding>
                                                 {group.members.slice(0, 5).map((member) => (
-                                                    <ListItem key={member.id}>
+                                                    <ListItem key={member.id} disableGutters>
                                                         <ListItemAvatar>
-                                                            <Avatar>
+                                                            <Avatar sx={{ borderRadius: 0 }}>
                                                                 <PersonIcon />
                                                             </Avatar>
                                                         </ListItemAvatar>
@@ -277,19 +330,29 @@ const GroupScreen: React.FC = () => {
                                                     </ListItem>
                                                 ))}
                                                 {group.members.length > 5 && (
-                                                    <ListItem>
-                                                        <ListItemText primary={`+${group.members.length - 5} more members`} />
+                                                    <ListItem disableGutters>
+                                                        <ListItemText
+                                                            primary={`+${group.members.length - 5} more members`}
+                                                        />
                                                     </ListItem>
                                                 )}
                                             </List>
-                                            <Typography variant="subtitle1" gutterBottom>
+                                            <Typography variant="subtitle1" gutterBottom color="text.primary" sx={{ mt: 2 }}>
                                                 Upcoming Events:
                                             </Typography>
                                             <GroupEvents groupId={group.id} />
                                         </CardContent>
                                     </Collapse>
-                                    <CardActions>
-                                        <Button size="small" onClick={() => navigate(`/groups/${group.id}`)}>
+                                    <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
+                                        <Button
+                                            size="small"
+                                            onClick={() => navigate(`/groups/${group.id}`)}
+                                            sx={{
+                                                textTransform: 'none',
+                                                fontWeight: 500,
+                                                borderRadius: 0,
+                                            }}
+                                        >
                                             View Details
                                         </Button>
                                     </CardActions>
@@ -304,21 +367,11 @@ const GroupScreen: React.FC = () => {
                 )}
             </Paper>
 
-            <Dialog
+            <CreateGroupDialog
                 open={isDialogOpen}
                 onClose={() => setIsDialogOpen(false)}
-                fullWidth
-                maxWidth="sm"
-            >
-                <DialogTitle>Create New Group</DialogTitle>
-                <DialogContent>
-                    <GroupForm
-                        onClose={() => setIsDialogOpen(false)}
-                        onGroupCreated={handleGroupCreated}
-                        open={isDialogOpen}
-                    />
-                </DialogContent>
-            </Dialog>
+                onGroupCreated={handleGroupCreated}
+            />
         </Container>
     );
 };
