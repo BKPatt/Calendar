@@ -122,7 +122,45 @@ class EventViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(events, many=True)
         return Response({"data": serializer.data})
 
+    def get_rrule(self, schedule, dtstart):
+        frequency_map = {
+            'DAILY': DAILY,
+            'WEEKLY': WEEKLY,
+            'MONTHLY': MONTHLY,
+            'YEARLY': YEARLY
+        }
+        rule_params = {
+            'freq': frequency_map[schedule.frequency],
+            'dtstart': dtstart,
+            'interval': schedule.interval,
+            'until': schedule.end_date,
+        }
+        byweekday = self.get_byweekday(schedule.days_of_week)
+        if byweekday:
+            rule_params['byweekday'] = byweekday
+        return rrule(**rule_params)
+
+    def get_byweekday(self, days_of_week):
+        days_map = {
+            "Monday": MO,
+            "Tuesday": TU,
+            "Wednesday": WE,
+            "Thursday": TH,
+            "Friday": FR,
+            "Saturday": SA,
+            "Sunday": SU
+        }
+        if not days_of_week:
+            return None
+        days_list = days_of_week.split(',')
+        return [days_map[day.strip()] for day in days_list if day.strip() in days_map]
+
     def get_queryset(self):
+        """
+        Returns all currently happening or future events (including recurring occurrences).
+        If start_date and end_date are provided, it filters by that range. Otherwise, it defaults
+        to events ending in the future.
+        """
         user = self.request.user
         start_date_str = self.request.query_params.get('start_date')
         end_date_str = self.request.query_params.get('end_date')
@@ -132,6 +170,7 @@ class EventViewSet(viewsets.ModelViewSet):
             Q(group__members=user)
         ).distinct()
 
+        # If date range is provided, filter accordingly
         if start_date_str and end_date_str:
             try:
                 start_dt = datetime.fromisoformat(start_date_str)
@@ -187,7 +226,52 @@ class EventViewSet(viewsets.ModelViewSet):
             all_events.sort(key=lambda x: x.start_time)
             return all_events
 
-        return queryset
+        # No date range: show all currently happening or future events
+        now = timezone.now()
+        non_recurring_events = queryset.filter(
+            recurring=False,
+            end_time__gte=now  # events that haven't ended yet
+        )
+
+        recurring_events = queryset.filter(recurring=True)
+        recurring_event_instances = []
+        # We'll look up to a certain future horizon, say one year
+        future_end = now + timedelta(days=365)
+        for event in recurring_events:
+            schedule = event.recurring_schedule
+            if schedule:
+                rule = self.get_rrule(schedule, event.start_time)
+                event_duration = event.end_time - event.start_time
+
+                # Only occurrences from now onwards
+                for occurrence in rule.between(now, future_end, inc=True):
+                    tz = zoneinfo.ZoneInfo(event.event_timezone if event.event_timezone else 'UTC')
+                    if timezone.is_naive(occurrence):
+                        occurrence = timezone.make_aware(occurrence, tz)
+                    # Include only occurrences that end in the future
+                    occ_end = occurrence + event_duration
+                    if occ_end >= now:
+                        recurring_event_instances.append(Event(
+                            id=event.id,
+                            title=event.title,
+                            description=event.description,
+                            start_time=occurrence,
+                            end_time=occ_end,
+                            location=event.location,
+                            created_by=event.created_by,
+                            group=event.group,
+                            recurring=True,
+                            recurrence_rule=event.recurrence_rule,
+                            recurrence_end_date=event.recurrence_end_date,
+                            color=event.color,
+                            event_type=event.event_type,
+                            is_all_day=event.is_all_day,
+                            event_timezone=event.event_timezone
+                        ))
+
+        all_events = list(non_recurring_events) + recurring_event_instances
+        all_events.sort(key=lambda x: x.start_time)
+        return all_events
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -214,39 +298,6 @@ class EventViewSet(viewsets.ModelViewSet):
             instance.end_time = timezone.make_aware(instance.end_time, tz)
         serializer = self.get_serializer(instance)
         return Response({"data": serializer.data})
-
-    def get_rrule(self, schedule, dtstart):
-        frequency_map = {
-            'DAILY': DAILY,
-            'WEEKLY': WEEKLY,
-            'MONTHLY': MONTHLY,
-            'YEARLY': YEARLY
-        }
-        rule_params = {
-            'freq': frequency_map[schedule.frequency],
-            'dtstart': dtstart,
-            'interval': schedule.interval,
-            'until': schedule.end_date,
-        }
-        byweekday = self.get_byweekday(schedule.days_of_week)
-        if byweekday:
-            rule_params['byweekday'] = byweekday
-        return rrule(**rule_params)
-
-    def get_byweekday(self, days_of_week):
-        days_map = {
-            "Monday": MO,
-            "Tuesday": TU,
-            "Wednesday": WE,
-            "Thursday": TH,
-            "Friday": FR,
-            "Saturday": SA,
-            "Sunday": SU
-        }
-        if not days_of_week:
-            return None
-        days_list = days_of_week.split(',')
-        return [days_map[day.strip()] for day in days_list if day.strip() in days_map]
 
     @action(detail=False, methods=['get'])
     def upcoming(self, request):

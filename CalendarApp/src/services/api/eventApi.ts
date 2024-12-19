@@ -22,7 +22,6 @@ export const eventApi = {
             url += `?${queryParams.toString()}`;
 
             const response = await apiRequest<Events[]>(url, 'GET');
-            console.log(response)
             return {
                 data: response.data,
                 message: 'Events fetched successfully',
@@ -189,12 +188,12 @@ export const eventApi = {
             const queryParams = new URLSearchParams(params);
             const url = `/events/?${queryParams.toString()}`;
 
-            const response = await apiRequest<PaginatedEvents>(url, 'GET');
+            const response = await apiRequest<Events[]>(url, 'GET');
 
             return {
-                data: response.data.results,
+                data: response.data,
                 message: 'Events fetched successfully',
-                count: response.data.count
+                count: response.count
             };
         } catch (error) {
             return {
